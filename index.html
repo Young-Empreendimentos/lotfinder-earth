@@ -817,8 +817,8 @@
                 nomeDoArquivo = nomesProjetos[currentProject];
             }
 
-            const fgUrl = `${nomeDoArquivo} - Com números.png`;
-            const bgUrl = `${nomeDoArquivo} - Fundo.png`;
+            const fgUrl = `${nomeDoArquivo} - Com números.webp`;
+            const bgUrl = `${nomeDoArquivo} - Fundo.webp`;
 
             imageOverlay = L.imageOverlay.canvasRotated(fgUrl, bgUrl,
                 L.latLng(calibrationBounds[currentProject][0]),
@@ -861,8 +861,8 @@
                 fallbackUrl = nomesProjetos[currentProject];
             }
 
-            const fgUrl = `${fallbackUrl} - Com números.png`;
-            const bgUrl = `${fallbackUrl} - Fundo.png`;
+            const fgUrl = `${fallbackUrl} - Com números.webp`;
+            const bgUrl = `${fallbackUrl} - Fundo.webp`;
 
             const loadImage = (src) => new Promise((resolve, reject) => {
                 const img = new Image();
