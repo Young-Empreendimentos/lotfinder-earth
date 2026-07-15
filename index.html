@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotfinder Earth</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { 
+            font-family: 'Space Grotesk', sans-serif;
+            background-color: #0d0d0d;
+            color: #f2f2f2;
+            user-select: none;
+        }
+        #map {
+            width: 100%;
+            height: calc(100vh - 120px);
+            border-radius: 0.5rem;
+            background-color: #0d0d0d;
+            overflow: hidden;
+        }
+        
+        @media (max-width: 768px) {
+            #map { height: calc(100vh - 90px); }
+        }
+
+        .leaflet-image-layer {
+            max-width: none !important;
+            max-height: none !important;
+        }
+
+        .city-marker {
+            transition: opacity 0.4s ease, transform 0.4s ease !important;
+        }
+        .hide-markers .city-marker {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: scale(0.5) !important;
+        }
+
+        .leaflet-popup-content-wrapper {
+            background-color: #061b39 !important;
+            color: white !important;
+            border: 0px solid #FE5009;
+            border-radius: 0.5rem;
+        }
+        .leaflet-popup-tip { background-color: #061b39 !important; border: 0px solid #FE5009; }
+        .leaflet-popup-close-button { color: white !important; }
+        .leaflet-popup-content { margin: 12px; font-family: 'Space Grotesk', sans-serif; }
+
+        .sim-input { background: #323232; border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; outline: none; font-size: 13px; width: 100%; }
+        .sim-input:focus { border-color: #FE5009; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden relative">
+
+    <!-- Backdrop escuro para mobile -->
+    <div id="mobile-backdrop" onclick="toggleSidebar()" class="hidden md:hidden absolute inset-0 bg-black/70 z-[3500] backdrop-blur-sm transition-opacity"></div>
+
+    <!-- Gaveta Lateral -->
+    <aside id="sidebar" class="absolute md:relative w-80 md:w-[340px] bg-[#1e1e1e] shadow-2xl flex flex-col z-[4000] md:z-[3000] shrink-0 h-full transition-transform duration-300 -translate-x-full md:translate-x-0">
+        <div class="p-5 bg-gradient-to-r from-[#061b39] to-[#0d0d0d]">
+            <h1 class="text-xl font-bold tracking-tight text-white flex justify-between items-center">
+                LOTFINDER EARTH
+                <div class="flex items-center gap-2">
+                    <span class="text-[9px] bg-[#FE5009] px-1.5 py-0.5 rounded text-white font-bold tracking-wider">BETA</span>
+                    <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white ml-2 text-xl">✕</button>
+                </div>
+            </h1>
+            <p class="text-[11px] text-blue-300 mt-1 flex items-center gap-1" id="status-conexao">
+                <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block animate-pulse"></span>
+                Conectando...
+            </p>
+        </div>
+
+        <div class="p-4 flex-1 overflow-y-auto space-y-4">
+            
+            <div>
+                <label class="block text-xs font-semibold text-[#FE5009] uppercase tracking-wider mb-1.5">Selecionar cidade</label>
+                <div class="flex gap-2">
+                    <input type="text" id="city-search-input" onkeypress="if(event.key === 'Enter') searchCity()" placeholder="Ex: Santiago RS..." class="flex-1 bg-[#0d0d0d] text-white p-2 rounded-lg text-sm outline-none focus:border-[#FE5009]">
+                    <button onclick="searchCity()" class="bg-[#FE5009] text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition shadow-md">Ir</button>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#0d0d0d]">
+                <label class="block text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-2">Selecionar Área ou Projeto</label>
+                <select id="project-select" onchange="changeProject()" class="w-full bg-[#0d0d0d] text-[#f2f2f2] p-2.5 rounded-lg outline-none focus:border-[#FE5009] font-medium text-sm">
+                    <option value="">Aguardando conexão...</option>
+                </select>
+            </div>
+
+            <div class="bg-[#0d0d0d]/40 p-4 rounded-xl mt-2">
+                <h3 class="text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-3">Filtros de Disponibilidade</h3>
+                <div class="grid grid-cols-2 gap-2 text-center text-xs">
+                    <div class="bg-[#323232]/50 p-2 rounded-lg relative group">
+                        <button onclick="toggleFilter('disponivel')" id="btn-filter-disponivel" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        </button>
+                        <span class="block text-lg font-bold text-white mt-1" id="stat-disp">0</span>
+                        <span class="text-[10px] text-gray-400 uppercase">Livres</span>
+                    </div>
+                    <div class="bg-[#751900]/20 p-2 rounded-lg relative group">
+                        <button onclick="toggleFilter('indisponivel')" id="btn-filter-indisponivel" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        </button>
+                        <span class="block text-lg font-bold text-red-400 mt-1" id="stat-indisp">0</span>
+                        <span class="text-[10px] text-red-300 uppercase">Indisponível</span>
+                    </div>
+                    <div class="bg-[#751900]/30 p-2 rounded-lg relative group">
+                        <button onclick="toggleFilter('vendido')" id="btn-filter-vendido" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        </button>
+                        <span class="block text-lg font-bold text-red-500 mt-1" id="stat-vend">0</span>
+                        <span class="text-[10px] text-gray-400 uppercase">Vendidos</span>
+                    </div>
+                    <div class="bg-yellow-950/40 p-2 rounded-lg relative group">
+                        <button onclick="toggleFilter('reserva')" id="btn-filter-reserva" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                        </button>
+                        <span class="block text-lg font-bold text-yellow-400 mt-1" id="stat-res">0</span>
+                        <span class="text-[10px] text-yellow-300 uppercase">Reservas</span>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-1.5">Buscar Lote</label>
+                <div class="relative">
+                    <input type="text" id="search-input" oninput="searchLot()" placeholder="Ex: 54" class="w-full bg-[#0d0d0d] text-white p-2.5 pl-8 rounded-lg text-sm outline-none focus:border-[#FE5009]">
+                    <span class="absolute left-2.5 top-2.5 text-gray-400 text-sm">🔍</span>
+                </div>
+            </div>
+
+            <div id="lot-actions" class="hidden bg-[#0d0d0d]/80 p-4 rounded-xl space-y-3 shadow-lg shadow-orange-900/20 transition-all">
+                <div class="flex justify-between items-start border-b border-[#323232] pb-2">
+                    <div>
+                        <h3 class="font-bold text-base text-[#FE5009]" id="sidebar-action-title">Lote <span id="selected-lot-number" class="text-white">--</span></h3>
+                        <p class="text-[11px] text-gray-400" id="sidebar-status-container">Status: <span id="selected-lot-status" class="font-semibold uppercase text-gray-300">--</span></p>
+                    </div>
+                    <button onclick="clearSelection()" class="text-xs text-gray-500 hover:text-white">✕ Fechar</button>
+                </div>
+                
+                <div class="pt-2 text-center text-xs text-gray-400">
+                    *Status e preço à vista vêm do Supabase (Sienge) em tempo real.
+                </div>
+                
+                <div class="pt-2" id="notes-container">
+                    <label id="notes-label" class="block text-[10px] font-semibold text-[#d7d7d9] uppercase tracking-wider mb-1">Anotações Internas (Somente Leitura)</label>
+                    <textarea id="lot-notes" readonly class="w-full bg-[#323232]/50 text-gray-300 p-2 rounded text-xs outline-none h-12 resize-none border border-transparent"></textarea>
+                </div>
+            </div>
+
+            <div class="pt-2 border-t border-[#0d0d0d] space-y-2 pb-4">
+                <button id="btn-download-map" onclick="downloadMap()" class="hidden w-full bg-blue-600 text-white py-2 rounded text-xs font-bold hover:bg-blue-500 transition shadow-md mb-2">
+                    📸 Baixar Mapa do Loteamento
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 bg-[#0d0d0d] flex flex-col p-4 md:p-6 relative">
+        <div class="flex justify-between items-center mb-4 z-20">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden bg-[#1e1e1e] p-2 rounded-lg border border-[#323232] text-white hover:bg-gray-800 transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div>
+                    <h2 class="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2 md:gap-3">
+                        Lotfinder Earth 
+                        <span class="text-gray-500 text-xl font-normal hidden md:inline">|</span> 
+                        <span id="current-title" class="text-[#FE5009] text-base md:text-xl">Visão Geral</span>
+                    </h2>
+                    <p class="text-[10px] md:text-xs text-gray-400 mt-0.5">Use o scroll para ver os projetos.</p>
+                </div>
+            </div>
+            
+            <div id="map-controls-container" class="flex items-center gap-2 bg-[#0d0d0d] p-1.5 rounded-xl border border-gray-900 shadow-lg transition-all hidden">
+                <button id="btn-toggle-fit" onclick="toggleFitMode()" class="bg-[#0d0d0d] text-[#f2f2f2] px-3 md:px-4 py-2 rounded-lg text-[10px] md:text-xs font-bold hover:bg-black transition border border-[#323232] flex items-center gap-2">
+                    <span class="md:hidden">🔧 Ajustar</span>
+                    <span class="hidden md:inline">🔧 Ajustar Imagem no Satélite</span>
+                </button>
+                <button onclick="resetOverlayBounds()" class="bg-gray-800 text-gray-400 hover:text-white px-2 md:px-3 py-2 rounded-lg text-[10px] md:text-xs font-bold transition">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <div id="map" class="relative z-10 border border-[#323232]/50"></div>
+        
+        <!-- Toggle Map Type Button -->
+        <button onclick="toggleMapType()" class="absolute bottom-6 left-6 md:left-10 z-[2000] bg-[#1e1e1e] border-2 border-[#323232] rounded-xl p-3 shadow-2xl hover:bg-gray-800 transition group flex items-center justify-center">
+            <span id="map-toggle-icon" class="text-2xl">🗺️</span>
+            <span id="map-toggle-tooltip" class="absolute left-16 top-1/2 -translate-y-1/2 bg-[#0d0d0d] text-white text-xs font-bold px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none border border-[#323232] shadow-xl">Alterar para Mapa Político</span>
+        </button>
+
+        <!-- POPUP DE SIMULAÇÃO (Responsivo) -->
+        <div id="simulation-popup" class="hidden absolute bottom-4 md:bottom-6 left-1/2 md:left-[calc(50%+170px)] -translate-x-1/2 w-[95%] md:w-[420px] max-w-[420px] bg-[#061b39]/95 backdrop-blur-md border border-[#FE5009] p-4 md:p-5 rounded-xl shadow-2xl z-[2000] text-white transition-all max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-[#323232] pb-3 mb-3">
+                <h3 class="font-bold text-xs md:text-sm text-[#FE5009] truncate pr-2" id="sim-header">Empreendimento | Lote --</h3>
+                <button onclick="closeSimulation()" class="text-gray-400 hover:text-white text-lg shrink-0">✕</button>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-wider">Status</span>
+                    <span id="sim-status" class="text-sm font-bold uppercase">--</span>
+                </div>
+                <div id="sim-preco-box" class="bg-[#0d0d0d]/80 rounded-lg p-3 text-center border border-[#323232]">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Preço à Vista</p>
+                    <p id="sim-preco" class="text-xl md:text-2xl font-bold text-green-400">--</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="calibration-hud" class="hidden absolute top-16 md:top-4 right-4 bg-[#0d0d0d]/95 p-4 rounded-xl border border-[#FE5009] z-[1000] shadow-2xl backdrop-blur-sm w-56">
+            <h3 class="text-[#FE5009] font-bold text-sm text-center mb-3">Ajuste Fino</h3>
+            
+            <div class="mb-3">
+                <p class="text-[10px] text-gray-400 uppercase text-center mb-2 tracking-wider">Mover Posição</p>
+                <div class="grid grid-cols-3 gap-1 w-24 mx-auto">
+                    <div></div>
+                    <button onmousedown="startInteract(); hudMove('N')" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded p-1.5 text-xs flex justify-center">▲</button>
+                    <div></div>
+                    <button onmousedown="startInteract(); hudMove('W')" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded p-1.5 text-xs flex justify-center">◀</button>
+                    <div class="flex items-center justify-center text-[10px] text-gray-500">Pan</div>
+                    <button onmousedown="startInteract(); hudMove('E')" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded p-1.5 text-xs flex justify-center">▶</button>
+                    <div></div>
+                    <button onmousedown="startInteract(); hudMove('S')" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded p-1.5 text-xs flex justify-center">▼</button>
+                    <div></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 border-t border-[#323232] pt-3">
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase text-center mb-1.5 tracking-wider">Girar</p>
+                    <div class="flex justify-center gap-1">
+                        <button onmousedown="startInteract(); hudRotate(-1)" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded px-2 py-1 text-xs">↺</button>
+                        <button onmousedown="startInteract(); hudRotate(1)" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded px-2 py-1 text-xs">↻</button>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase text-center mb-1.5 tracking-wider">Tamanho</p>
+                    <div class="flex justify-center gap-1">
+                        <button onmousedown="startInteract(); hudScale(0.995)" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded px-2 py-1 text-xs">➖</button>
+                        <button onmousedown="startInteract(); hudScale(1.005)" onmouseup="endInteract()" class="bg-[#323232] hover:bg-gray-600 text-white rounded px-2 py-1 text-xs">➕</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobile-backdrop');
+            
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        // Endpoint público do mapa (Edge Function no Supabase). NÃO leva chave no cliente:
+        // a função roda no servidor com service_role e devolve só status/preço dos lotes.
+        const MAPA_LOTES_URL = "https://vvtympzatclvjaqucebr.supabase.co/functions/v1/mapa-lotes";
+
+        // Normaliza o número do lote igual à função do banco:
+        // minúsculo, sem símbolos, sem prefixo "lote", sem zeros à esquerda.
+        function normLote(s) {
+            s = String(s == null ? '' : s).toLowerCase().trim();
+            s = s.replace(/\.0+$/, '');
+            s = s.replace(/[^a-z0-9]+/g, '');
+            s = s.replace(/^lote/, '');
+            s = s.replace(/^0+/, '');
+            return s;
+        }
+
+        // Busca o mapa de status/preço ao vivo no Supabase (só leitura).
+        async function fetchLiveMapa() {
+            const res = await fetch(MAPA_LOTES_URL, { method: 'POST' });
+            if (!res.ok) throw new Error('mapa-lotes: HTTP ' + res.status);
+            return await res.json();
+        }
+
+        // Sobrescreve o status (e injeta o preço à vista) de cada lote com o dado ao vivo.
+        // Mantém o status congelado do dados.json como fallback quando não há correspondência.
+        function mergeLiveMapa(liveMapa) {
+            for (const proj in loteamentosDados) {
+                const live = liveMapa[proj] || {};
+                for (const lot of loteamentosDados[proj]) {
+                    const hit = live[normLote(lot.number)];
+                    if (hit) {
+                        if (hit.s) lot.status = hit.s;
+                        lot.preco = (hit.p != null) ? hit.p : null;
+                    } else {
+                        lot.preco = null;
+                    }
+                }
+            }
+        }
+        
+        L.ImageOverlay.CanvasRotated = L.ImageOverlay.extend({
+            initialize: function (fgUrl, bgUrl, topleft, topright, bottomleft, options) {
+                this._url = fgUrl; 
+                this._fgUrl = fgUrl;
+                this._bgUrl = bgUrl;
+                this._topLeft    = L.latLng(topleft);
+                this._topRight   = L.latLng(topright);
+                this._bottomLeft = L.latLng(bottomleft);
+                this._lots = [];
+                this._filters = {};
+                L.setOptions(this, options);
+            },
+            onAdd: function (map) {
+                if (!this._image) this._initImage();
+                map.getPanes().overlayPane.appendChild(this._image);
+                map.on('zoomanim viewreset moveend', this._reset, this);
+                this._reset();
+            },
+            onRemove: function (map) {
+                map.getPanes().overlayPane.removeChild(this._image);
+                map.off('zoomanim viewreset moveend', this._reset, this);
+            },
+            _initImage: function () {
+                var canvas = this._image = L.DomUtil.create('canvas', 'leaflet-image-layer leaflet-zoom-animated');
+                if (this.options.zIndex) canvas.style.zIndex = this.options.zIndex;
+
+                this._fgImg = new Image();
+                this._bgImg = new Image();
+
+                let loadedCount = 0;
+                const checkLoad = () => {
+                    loadedCount++;
+                    if (loadedCount === 2) {
+                        canvas.width = this._fgImg.naturalWidth || 1600;
+                        canvas.height = this._fgImg.naturalHeight || 1000;
+                        if (this.options.onLoad) this.options.onLoad(canvas.width, canvas.height);
+                        this.redraw();
+                        this._reset();
+                    }
+                };
+
+                this._fgImg.onload = checkLoad;
+                this._fgImg.onerror = () => { checkLoad(); };
+
+                this._bgImg.onload = checkLoad;
+                this._bgImg.onerror = () => {
+                    this._bgImg = this._fgImg; 
+                    checkLoad();
+                };
+
+                this._fgImg.src = encodeURI(this._fgUrl);
+                this._bgUrl ? (this._bgImg.src = encodeURI(this._bgUrl)) : (this._bgImg = this._fgImg, checkLoad());
+            },
+            setData: function(lots, filters) {
+                this._lots = lots;
+                this._filters = filters;
+                this.redraw();
+            },
+            redraw: function() {
+                if (!this._image || this._image.width === 0 || !this._fgImg.complete) return;
+                const ctx = this._image.getContext('2d');
+                ctx.clearRect(0, 0, this._image.width, this._image.height);
+                
+                if (this._bgImg && this._bgImg.complete) {
+                    ctx.drawImage(this._bgImg, 0, 0, this._image.width, this._image.height);
+                }
+
+                ctx.save();
+                ctx.beginPath();
+                let hasVisible = false;
+                if (this._lots) {
+                    this._lots.forEach(lot => {
+                        if (this._filters[lot.status]) {
+                            hasVisible = true;
+                            const pts = lot.points.split(' ').map(p => {
+                                const c = p.split(',');
+                                return {x: parseFloat(c[0]), y: parseFloat(c[1])};
+                            });
+                            if(pts.length > 2) {
+                                ctx.moveTo(pts[0].x, pts[0].y);
+                                for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                                ctx.closePath();
+                            }
+                        }
+                    });
+                }
+                if (hasVisible) {
+                    ctx.clip();
+                    if (this._fgImg && this._fgImg.complete) {
+                        ctx.drawImage(this._fgImg, 0, 0, this._image.width, this._image.height);
+                    }
+                }
+                ctx.restore();
+            },
+            _reset: function () {
+                if (!this._image || !this._map) return;
+                var div = this._image;
+                
+                var imgW = div.width || 300;
+                var imgH = div.height || 150;
+
+                div.style.width  = imgW + 'px';
+                div.style.height = imgH + 'px';
+
+                var tr = this._map.latLngToLayerPoint(this._topRight);
+                var tl = this._map.latLngToLayerPoint(this._topLeft);
+                var bl = this._map.latLngToLayerPoint(this._bottomLeft);
+
+                var vectorX = tr.subtract(tl);
+                var vectorY = bl.subtract(tl);
+
+                L.DomUtil.setPosition(div, tl);
+                
+                var transformStr = div.style.transform.replace(/ matrix\([^)]+\)/g, ''); 
+                var matrixStr = ' matrix(' + 
+                    (vectorX.x / imgW) + ', ' + 
+                    (vectorX.y / imgW) + ', ' + 
+                    (vectorY.x / imgH) + ', ' + 
+                    (vectorY.y / imgH) + ', 0, 0)';
+                    
+                div.style.transformOrigin = '0px 0px';
+                div.style.transform = transformStr + matrixStr;
+            },
+            reposition: function(topleft, topright, bottomleft) {
+                this._topLeft    = L.latLng(topleft);
+                this._topRight   = L.latLng(topright);
+                this._bottomLeft = L.latLng(bottomleft);
+                this._reset();
+            },
+            setOpacity: function(opacity) {
+                this.options.opacity = opacity;
+                if (this._image) {
+                    L.DomUtil.setOpacity(this._image, opacity);
+                }
+                return this;
+            }
+        });
+        L.imageOverlay.canvasRotated = function (fgUrl, bgUrl, topleft, topright, bottomleft, options) {
+            return new L.ImageOverlay.CanvasRotated(fgUrl, bgUrl, topleft, topright, bottomleft, options);
+        };
+
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+            iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        });
+
+        const eyeOpenSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`;
+        const eyeClosedSVG = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>`;
+
+        let loteamentosDados = {};
+        let calibrationBounds = {}; 
+        let licensingData = {}; 
+        let nomesProjetos = {}; 
+        let projetosMeta = {}; 
+
+        let filters = { disponivel: true, vendido: true, reserva: true, indisponivel: true };
+        
+        let currentProject = null;
+        let selectedLotId = null;
+        let currentLicensingCity = null;
+        let fitModeActive = false;
+        const ZOOM_THRESHOLD = 13; 
+
+        let map;
+        let imageOverlay = null;
+        let polygonsGroup = null;
+        let cityMarkersGroup = null; 
+        let licensingPolygonLayer = null; 
+        let licensingGroup = null;
+        
+        let satelliteLayer = null;
+        let streetLayer = null;
+        let labelsLayer = null;
+        let currentMapStyle = 'satellite';
+
+        let centerMarker = null; 
+        let rotateMarker = null; 
+        let scaleMarker = null;
+        let boundsPolygon = null;
+
+        let imgNaturalWidth = 1600;
+        let imgNaturalHeight = 1000;
+        let baseW_px = 800; 
+        let baseH_px = 500;
+
+        let imgCenter = null;
+        let imgAngle = 0.0;
+        let imgScale = 1.0;
+
+        const licensingIcon = L.divIcon({
+            className: 'city-marker bg-[#FE5009]/60 border-2 border-[#FE5009] rounded-full shadow-[0_0_15px_#FE5009] backdrop-blur cursor-pointer hover:bg-[#FE5009]',
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+        });
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            map = L.map('map', { zoomControl: true, zoomControlPosition: 'bottomright' }).setView([-30.0346, -51.2177], 7);
+
+            satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxNativeZoom: 17,
+                maxZoom: 26,
+                attribution: 'Esri Satellite'
+            });
+
+            streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxNativeZoom: 19,
+                maxZoom: 26,
+                attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            });
+
+            map.createPane('labels');
+            map.getPane('labels').style.zIndex = 650;
+            map.getPane('labels').style.pointerEvents = 'none';
+            labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                pane: 'labels',
+                maxNativeZoom: 17,
+                maxZoom: 26
+            });
+
+            satelliteLayer.addTo(map);
+            labelsLayer.addTo(map);
+
+            polygonsGroup = L.layerGroup().addTo(map);
+            cityMarkersGroup = L.layerGroup().addTo(map);
+            licensingGroup = L.layerGroup().addTo(map);
+
+            map.on('zoomend', checkZoomLevel);
+
+            fetch('dados.json', { cache: 'no-store' })
+                .then(res => res.json())
+                .then(async (configData) => {
+                    loteamentosDados = configData.data || {};
+                    calibrationBounds = configData.calibration || {};
+                    licensingData = configData.licensing || {};
+                    projetosMeta = configData.empreendimentos || {};
+
+                    // calibração salva como 2 cantos -> converte para 3 cantos (TL, TR, BL)
+                    for (let proj in calibrationBounds) {
+                        if (calibrationBounds[proj] && calibrationBounds[proj].length === 2) {
+                            const sw = calibrationBounds[proj][0];
+                            const ne = calibrationBounds[proj][1];
+                            calibrationBounds[proj] = [[ne[0], sw[1]], [ne[0], ne[1]], [sw[0], sw[1]]];
+                        }
+                    }
+
+                    // Status + preço à vista ao vivo do Supabase (Sienge / comercial)
+                    try {
+                        const liveMapa = await fetchLiveMapa();
+                        mergeLiveMapa(liveMapa);
+                        document.getElementById('status-conexao').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-400 inline-block animate-pulse"></span> Online (ao vivo)';
+                    } catch (e) {
+                        console.error('Falha ao buscar dados ao vivo:', e);
+                        document.getElementById('status-conexao').innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> Offline (dados do arquivo)';
+                    }
+
+                    buildDropdown();
+                    renderMarkers();
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById('status-conexao').innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Erro ao carregar dados.`;
+                });
+        });
+
+        function toggleMapType() {
+            const btnTooltip = document.getElementById('map-toggle-tooltip');
+            const btnIcon = document.getElementById('map-toggle-icon');
+            
+            if (currentMapStyle === 'satellite') {
+                map.removeLayer(satelliteLayer);
+                map.removeLayer(labelsLayer);
+                streetLayer.addTo(map);
+                currentMapStyle = 'street';
+                btnIcon.innerText = '🛰️';
+                btnTooltip.innerText = 'Alterar para Satélite';
+            } else {
+                map.removeLayer(streetLayer);
+                satelliteLayer.addTo(map);
+                labelsLayer.addTo(map);
+                currentMapStyle = 'satellite';
+                btnIcon.innerText = '🗺️';
+                btnTooltip.innerText = 'Alterar para Mapa Político';
+            }
+        }
+
+        function getProjectName(code) {
+            if (projetosMeta[code] && projetosMeta[code].nome) return projetosMeta[code].nome;
+            return nomesProjetos[code] || code;
+        }
+
+        function buildDropdown() {
+            const selectEl = document.getElementById('project-select');
+            selectEl.innerHTML = '<option value="">Selecione um projeto...</option>';
+
+            if (Object.keys(loteamentosDados).length > 0) {
+                const optGroupAtivos = document.createElement('optgroup');
+                optGroupAtivos.label = "Empreendimentos Ativos";
+                for (let code in loteamentosDados) {
+                    const opt = document.createElement('option');
+                    opt.value = code;
+                    opt.text = getProjectName(code); 
+                    optGroupAtivos.appendChild(opt);
+                }
+                selectEl.appendChild(optGroupAtivos);
+            }
+
+            if (Object.keys(licensingData).length > 0) {
+                const optGroupLic = document.createElement('optgroup');
+                optGroupLic.label = "Áreas em Licenciamento";
+                for (let city in licensingData) {
+                    const opt = document.createElement('option');
+                    opt.value = "LIC_" + city;
+                    opt.text = city;
+                    optGroupLic.appendChild(opt);
+                }
+                selectEl.appendChild(optGroupLic);
+            }
+        }
+
+        function renderMarkers() {
+            cityMarkersGroup.clearLayers();
+            
+            for (let code in calibrationBounds) {
+                let bounds = calibrationBounds[code];
+                if(bounds && bounds.length >= 3) {
+                    let centerLat = (bounds[0][0] + bounds[2][0]) / 2;
+                    let centerLng = (bounds[0][1] + bounds[1][1]) / 2;
+
+                    let status = (projetosMeta[code] && projetosMeta[code].status) ? projetosMeta[code].status : 'entregue';
+                    let markerColor = (status === 'em obras') ? '#004EBF' : '#00FFFF';
+                    let displayName = getProjectName(code);
+
+                    const dynamicIcon = L.divIcon({
+                        className: 'city-marker rounded-full backdrop-blur cursor-pointer hover:opacity-80 transition-all',
+                        html: `<div style="width:100%; height:100%; border-radius:50%; background-color:${markerColor}99; border: 2px solid ${markerColor}; box-shadow: 0 0 15px ${markerColor};"></div>`,
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18]
+                    });
+                    
+                    let marker = L.marker([centerLat, centerLng], {icon: dynamicIcon, zIndexOffset: 1000});
+                    
+                    marker.bindTooltip(
+                        `<span style="color: ${markerColor}; font-family: 'Space Grotesk', sans-serif; font-weight: bold; font-size: 14px;">${displayName}</span>`, 
+                        {direction: 'top', className: 'bg-[#0d0d0d] border border-gray-700'}
+                    );
+                    marker.on('click', () => {
+                        document.getElementById('project-select').value = code;
+                        changeProject(); 
+                    });
+                    cityMarkersGroup.addLayer(marker);
+                }
+            }
+
+            for (let city in licensingData) {
+                if(!licensingData[city] || !licensingData[city].center) continue;
+                let marker = L.marker(licensingData[city].center, {icon: licensingIcon, zIndexOffset: 0});
+                marker.bindTooltip(
+                    `<span style="color: #FE5009; font-family: 'Space Grotesk', sans-serif; font-weight: bold; font-size: 14px;">${city}<br><span style="font-size: 10px; font-weight: normal; color: #aaa;">Em Licenciamento</span></span>`, 
+                    {direction: 'top', className: 'bg-[#0d0d0d] border-[#FE5009] border text-center'}
+                );
+                marker.on('click', () => {
+                    document.getElementById('project-select').value = "LIC_" + city;
+                    changeProject();
+                });
+                cityMarkersGroup.addLayer(marker);
+            }
+        }
+
+        function checkZoomLevel() {
+            const currentZoom = map.getZoom();
+            const mapEl = document.getElementById('map');
+            
+            if (currentZoom < ZOOM_THRESHOLD) {
+                mapEl.classList.remove('hide-markers');
+                
+                if (imageOverlay && map.hasLayer(imageOverlay)) map.removeLayer(imageOverlay);
+                if (polygonsGroup && map.hasLayer(polygonsGroup)) map.removeLayer(polygonsGroup);
+                if (map.hasLayer(licensingGroup)) map.removeLayer(licensingGroup);
+                
+                if (fitModeActive) toggleFitMode(); 
+            } else {
+                mapEl.classList.add('hide-markers');
+                
+                if (currentLicensingCity) {
+                    if (imageOverlay && map.hasLayer(imageOverlay)) map.removeLayer(imageOverlay);
+                    if (polygonsGroup && map.hasLayer(polygonsGroup)) map.removeLayer(polygonsGroup);
+                    
+                    if (!map.hasLayer(licensingGroup)) map.addLayer(licensingGroup);
+                } else {
+                    if (map.hasLayer(licensingGroup)) map.removeLayer(licensingGroup);
+
+                    if (imageOverlay && !map.hasLayer(imageOverlay)) {
+                        map.addLayer(imageOverlay);
+                        if(imageOverlay._reset) imageOverlay._reset(); 
+                    }
+                    if (polygonsGroup && !map.hasLayer(polygonsGroup)) map.addLayer(polygonsGroup);
+                }
+            }
+        }
+
+        function openLicensingArea(cityName) {
+            clearSelection(); 
+            currentLicensingCity = cityName;
+            let areaData = licensingData[cityName];
+
+            document.getElementById('map-controls-container').classList.add('hidden');
+            document.getElementById('btn-download-map').classList.add('hidden'); 
+            
+            licensingGroup.clearLayers();
+            if(areaData.polygon && areaData.polygon.length > 0) {
+                L.polygon(areaData.polygon, {
+                    color: '#FE5009',
+                    weight: 3,
+                    fillColor: '#FE5009',
+                    fillOpacity: 0.35,
+                    dashArray: '5, 5'
+                }).addTo(licensingGroup);
+            }
+
+            map.flyTo(areaData.center, 15, {duration: 1.5});
+
+            document.getElementById('lot-actions').classList.remove('hidden');
+            document.getElementById('sidebar-action-title').innerHTML = `Licenciamento: <br><span class="text-white text-sm">${cityName}</span>`;
+            document.getElementById('sidebar-status-container').classList.add('hidden');
+            
+            document.getElementById('notes-label').innerText = "Anotações da Área";
+            document.getElementById('lot-notes').value = areaData.notes || '';
+            document.getElementById('lot-notes').classList.replace('h-12', 'h-32'); 
+            
+            if (window.innerWidth < 768) toggleSidebar();
+        }
+
+        function searchCity() {
+            const query = document.getElementById('city-search-input').value;
+            if (!query) return;
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        map.flyTo([data[0].lat, data[0].lon], 13, { duration: 2 });
+                        if (window.innerWidth < 768) toggleSidebar();
+                    }
+                });
+        }
+
+        function changeProject() {
+            const selectVal = document.getElementById('project-select').value;
+            if(!selectVal) return;
+
+            const selectEl = document.getElementById('project-select');
+            document.getElementById('current-title').innerText = selectEl.options[selectEl.selectedIndex].text;
+            
+            if (selectVal.startsWith("LIC_")) {
+                const cityName = selectVal.replace("LIC_", "");
+                document.getElementById('btn-download-map').classList.add('hidden'); 
+                openLicensingArea(cityName);
+            } else {
+                currentLicensingCity = null;
+                clearSelection();
+                currentProject = selectVal;
+                
+                document.getElementById('map-controls-container').classList.remove('hidden');
+                document.getElementById('btn-download-map').classList.remove('hidden'); 
+
+                if(fitModeActive) toggleFitMode(); 
+                updateProjectMap();
+                if (window.innerWidth < 768) toggleSidebar();
+            }
+        }
+
+        function updateProjectMap() {
+            if (imageOverlay) map.removeLayer(imageOverlay);
+            if (boundsPolygon) map.removeLayer(boundsPolygon);
+            clearCalibrationMarkers();
+            clearSelection();
+
+            let currentCalib = calibrationBounds[currentProject];
+            if (!currentCalib) {
+                let match = Object.keys(calibrationBounds).find(k => currentProject.includes(k) || k.includes(currentProject));
+                if (match) {
+                    currentCalib = calibrationBounds[match];
+                    calibrationBounds[currentProject] = currentCalib;
+                }
+            }
+
+            if (!currentCalib) {
+                let c = map.getCenter();
+                currentCalib = [
+                    [c.lat + 0.005, c.lng - 0.005],
+                    [c.lat + 0.005, c.lng + 0.005],
+                    [c.lat - 0.005, c.lng - 0.005]
+                ];
+                calibrationBounds[currentProject] = currentCalib;
+                alert("As coordenadas de calibração não foram encontradas no JSON.\nA imagem foi jogada no centro da tela. Use o botão 'Ajustar Imagem' para corrigir.");
+            }
+
+            let nomeDoArquivo = currentProject;
+            if (nomesProjetos[currentProject] && !currentProject.includes(nomesProjetos[currentProject])) {
+                nomeDoArquivo = nomesProjetos[currentProject];
+            }
+
+            const fgUrl = `${nomeDoArquivo} - Com números.png`;
+            const bgUrl = `${nomeDoArquivo} - Fundo.png`;
+
+            imageOverlay = L.imageOverlay.canvasRotated(fgUrl, bgUrl,
+                L.latLng(calibrationBounds[currentProject][0]),
+                L.latLng(calibrationBounds[currentProject][1]),
+                L.latLng(calibrationBounds[currentProject][2]), 
+                { 
+                    opacity: 1.0,
+                    onLoad: function(w, h) {
+                        imgNaturalWidth = w;
+                        imgNaturalHeight = h;
+
+                        const initialWidthPixels = 800; 
+                        baseW_px = initialWidthPixels;
+                        baseH_px = initialWidthPixels * (imgNaturalHeight / imgNaturalWidth);
+
+                        restoreStateFromBounds(calibrationBounds[currentProject]);
+                        map.flyTo(imgCenter, 16, {duration: 1.5});
+                        
+                        checkZoomLevel();
+                        renderGeographicPolygons();
+                    }
+                }
+            );
+
+            imageOverlay.addTo(map);
+        }
+
+        function downloadMap() {
+            if (!currentProject) return;
+
+            const btn = document.getElementById('btn-download-map');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Gerando Imagem...";
+            btn.disabled = true;
+
+            let nomeDoArquivo = getProjectName(currentProject);
+
+            let fallbackUrl = currentProject;
+            if (nomesProjetos[currentProject] && !currentProject.includes(nomesProjetos[currentProject])) {
+                fallbackUrl = nomesProjetos[currentProject];
+            }
+
+            const fgUrl = `${fallbackUrl} - Com números.png`;
+            const bgUrl = `${fallbackUrl} - Fundo.png`;
+
+            const loadImage = (src) => new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+
+            Promise.all([
+                loadImage(fgUrl),
+                loadImage(bgUrl).catch(() => loadImage(fgUrl)) 
+            ]).then(([fgImg, bgImg]) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = fgImg.naturalWidth;
+                canvas.height = fgImg.naturalHeight;
+                const ctx = canvas.getContext('2d');
+
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+                const currentList = loteamentosDados[currentProject] || [];
+
+                ctx.save();
+                ctx.beginPath();
+                let hasVisible = false;
+                currentList.forEach(lot => {
+                    if (filters[lot.status]) {
+                        hasVisible = true;
+                        const pts = lot.points.split(' ').map(p => {
+                            const coords = p.split(',');
+                            return { x: parseFloat(coords[0]), y: parseFloat(coords[1]) };
+                        });
+                        if (pts.length > 2) {
+                            ctx.moveTo(pts[0].x, pts[0].y);
+                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                        }
+                    }
+                });
+                if (hasVisible) {
+                    ctx.clip();
+                    ctx.drawImage(fgImg, 0, 0, canvas.width, canvas.height);
+                }
+                ctx.restore();
+
+                currentList.forEach(lot => {
+                    if (!filters[lot.status]) return;
+                    const points = lot.points.split(' ').map(p => {
+                        const coords = p.split(',');
+                        return { x: parseFloat(coords[0]), y: parseFloat(coords[1]) };
+                    });
+                    if (points.length < 3) return;
+
+                    ctx.beginPath();
+                    ctx.moveTo(points[0].x, points[0].y);
+                    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+                    ctx.closePath();
+
+                    ctx.lineWidth = 3; 
+                    ctx.strokeStyle = '#d7d7d9';
+                    let fillColor = 'rgba(0, 0, 0, 0)'; 
+
+                    if (lot.status === 'vendido') {
+                        fillColor = 'rgba(117, 25, 0, 0.45)';
+                        ctx.strokeStyle = '#751900';
+                    } else if (lot.status === 'reserva') {
+                        fillColor = 'rgba(234, 179, 8, 0.45)';
+                        ctx.strokeStyle = '#eab308';
+                    } else if (lot.status === 'indisponivel') {
+                        fillColor = 'rgba(117, 25, 0, 0.45)';
+                        ctx.strokeStyle = '#751900';
+                    }
+
+                    if (lot.id === selectedLotId) {
+                        ctx.strokeStyle = '#FE5009';
+                        ctx.lineWidth = 6;
+                    }
+
+                    ctx.fillStyle = fillColor;
+                    ctx.fill();
+                    ctx.stroke();
+                });
+
+                const link = document.createElement('a');
+                link.download = `Mapa_${nomeDoArquivo}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                alert("Erro ao carregar a imagem de alta resolução para download. Verifique se o arquivo está na pasta.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        function generateBoundsFromState() {
+            let centerPt = map.project(imgCenter, 18); 
+
+            function getCornerPt(offsetX, offsetY) {
+                let w = baseW_px * imgScale;
+                let h = baseH_px * imgScale;
+                
+                let x = offsetX * w;
+                let y = offsetY * h; 
+
+                let rad = imgAngle * Math.PI / 180;
+                let cosA = Math.cos(rad);
+                let sinA = Math.sin(rad);
+
+                let rotX = x * cosA - y * sinA;
+                let rotY = x * sinA + y * cosA;
+
+                let pt = L.point(centerPt.x + rotX, centerPt.y + rotY);
+                return map.unproject(pt, 18);
+            }
+
+            const TL = getCornerPt(-0.5, -0.5); 
+            const TR = getCornerPt(0.5, -0.5);
+            const BL = getCornerPt(-0.5, 0.5);
+            const BR = getCornerPt(0.5, 0.5);
+            const TopCenter = getCornerPt(0, -0.5); 
+
+            calibrationBounds[currentProject] = [
+                [TL.lat, TL.lng], [TR.lat, TR.lng], [BL.lat, BL.lng]
+            ];
+
+            return { TL, TR, BL, BR, TopCenter };
+        }
+
+        function restoreStateFromBounds(bounds) {
+            let TL = map.project(L.latLng(bounds[0]), 18);
+            let TR = map.project(L.latLng(bounds[1]), 18);
+            let BL = map.project(L.latLng(bounds[2]), 18);
+
+            let centerX = (TR.x + BL.x) / 2;
+            let centerY = (TR.y + BL.y) / 2;
+            imgCenter = map.unproject(L.point(centerX, centerY), 18);
+
+            let vecTopX = TR.x - TL.x;
+            let vecTopY = TR.y - TL.y;
+            let currentWidthPx = Math.sqrt(vecTopX*vecTopX + vecTopY*vecTopY);
+            
+            imgScale = currentWidthPx / baseW_px;
+            imgAngle = Math.atan2(vecTopY, vecTopX) * 180 / Math.PI;
+        }
+
+        function pixelToLatLng(pixelStr, boundsArray) {
+            const TL = L.latLng(boundsArray[0]);
+            const TR = L.latLng(boundsArray[1]);
+            const BL = L.latLng(boundsArray[2]);
+
+            return pixelStr.split(' ').map(p => {
+                const coords = p.split(',');
+                if(coords.length < 2) return [TL.lat, TL.lng];
+                
+                const x = parseFloat(coords[0]);
+                const y = parseFloat(coords[1]);
+                
+                const u = x / imgNaturalWidth;
+                const v = y / imgNaturalHeight; 
+
+                const lat = TL.lat + u * (TR.lat - TL.lat) + v * (BL.lat - TL.lat);
+                const lng = TL.lng + u * (TR.lng - TL.lng) + v * (BL.lng - TL.lng);
+                return [lat, lng];
+            });
+        }
+
+        function renderGeographicPolygons() {
+            polygonsGroup.clearLayers();
+            let disp = 0, vend = 0, indisp = 0, res = 0;
+            const currentList = loteamentosDados[currentProject] || [];
+            const bounds = calibrationBounds[currentProject];
+
+            if (imageOverlay && typeof imageOverlay.setData === 'function') {
+                imageOverlay.setData(currentList, filters);
+            }
+
+            currentList.forEach(lot => {
+                if (lot.status === 'disponivel') disp++;
+                else if (lot.status === 'vendido') vend++;
+                else if (lot.status === 'reserva') res++;
+                else indisp++;   // indisponível (permuta/terceiros/transferido/proposta)
+
+                if (!filters[lot.status]) return;
+
+                const geoCoords = pixelToLatLng(lot.points, bounds);
+
+                let colorOptions = { weight: 1.5, color: '#d7d7d9', fillOpacity: 0.45 };
+                if (lot.id === selectedLotId) { colorOptions.color = '#FE5009'; colorOptions.weight = 3.5; }
+
+                if (lot.status === 'disponivel') { colorOptions.fillColor = 'transparent'; colorOptions.fillOpacity = 0; }
+                else if (lot.status === 'vendido') { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }
+                else if (lot.status === 'reserva') { colorOptions.fillColor = '#eab308'; colorOptions.color = '#eab308'; }
+                else { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }   // indisponível (vermelho, como vendido)
+
+                const polygon = L.polygon(geoCoords, colorOptions).addTo(polygonsGroup);
+
+                let statusName = lot.status === 'indisponivel' ? 'INDISPONÍVEL' : lot.status.toUpperCase();
+                let popupHtml = `
+                    <div class="text-center font-sans w-32">
+                        <span class="text-[10px] text-gray-400 block mb-0.5 uppercase">${getProjectName(currentProject)}</span>
+                        <h4 class="font-bold text-lg text-white mb-1">Lote ${lot.number}</h4>
+                        <p class="font-bold text-[11px] ${lot.status === 'disponivel' ? 'text-white' : 'text-[#FE5009]'} tracking-wide">${statusName}</p>
+                    </div>`;
+                polygon.bindPopup(popupHtml, { closeButton: false, offset: [0, -5] });
+
+                polygon.on('click', (e) => {
+                    if (fitModeActive) return;
+                    L.DomEvent.stopPropagation(e);
+                    selectLot(lot);
+                });
+            });
+
+            document.getElementById('stat-disp').innerText = disp;
+            document.getElementById('stat-vend').innerText = vend;
+            document.getElementById('stat-indisp').innerText = indisp;
+            document.getElementById('stat-res').innerText = res;
+        }
+
+        let interactTimeout;
+        function startInteract() {
+            if (imageOverlay && map.hasLayer(imageOverlay)) imageOverlay.setOpacity(0.5); 
+            clearTimeout(interactTimeout);
+        }
+        function endInteract() {
+            interactTimeout = setTimeout(() => {
+                if (imageOverlay && map.hasLayer(imageOverlay)) imageOverlay.setOpacity(1.0); 
+            }, 300);
+        }
+
+        function toggleFitMode() {
+            fitModeActive = !fitModeActive;
+            const btn = document.getElementById('btn-toggle-fit');
+            const hud = document.getElementById('calibration-hud');
+            
+            if (fitModeActive) {
+                if (map.getZoom() < ZOOM_THRESHOLD) map.setView(imgCenter, 16);
+
+                btn.className = "bg-[#FE5009] text-white px-4 py-2 rounded-lg text-xs font-bold shadow transition animate-pulse flex items-center gap-2";
+                btn.innerHTML = "💾 Salvar Ajuste Fino";
+                hud.className = "absolute top-16 md:top-4 right-4 bg-[#0d0d0d]/95 p-4 rounded-xl border border-[#FE5009] z-[1000] shadow-2xl backdrop-blur-sm w-56"; 
+                clearSelection();
+                activateCalibrationMarkers();
+            } else {
+                btn.className = "bg-[#0d0d0d] text-[#f2f2f2] px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition border border-[#323232] flex items-center gap-2";
+                btn.innerHTML = "🔧 Ajustar Imagem no Satélite";
+                hud.className = "hidden"; 
+                clearCalibrationMarkers();
+            }
+        }
+
+        function activateCalibrationMarkers() {
+            clearCalibrationMarkers();
+            
+            const pts = generateBoundsFromState();
+
+            const iconMove = L.divIcon({ className: 'bg-blue-600 rounded-full border-4 border-white shadow-2xl flex items-center justify-center text-white text-xl cursor-grab', html: '✋', iconSize: [40, 40], iconAnchor: [20, 20] });
+            const iconRotate = L.divIcon({ className: 'bg-red-600 rounded-full border-4 border-white shadow-2xl flex items-center justify-center text-white text-xl cursor-move', html: '🔄', iconSize: [36, 36], iconAnchor: [18, 18] });
+            const iconScale = L.divIcon({ className: 'bg-yellow-500 rounded-full border-4 border-white shadow-2xl flex items-center justify-center text-white text-xl cursor-nwse-resize', html: '📐', iconSize: [36, 36], iconAnchor: [18, 18] });
+
+            centerMarker = L.marker(imgCenter, { draggable: true, icon: iconMove }).addTo(map);
+            centerMarker.bindTooltip("Mover Imagem", {permanent: true, direction: 'right'}).openTooltip();
+
+            centerMarker.on('dragstart', startInteract);
+            centerMarker.on('drag', (e) => {
+                imgCenter = e.latlng;
+                updateViewFromState();
+            });
+            centerMarker.on('dragend', endInteract);
+
+            rotateMarker = L.marker(pts.TopCenter, { draggable: true, icon: iconRotate }).addTo(map);
+            rotateMarker.bindTooltip("Girar", {permanent: true, direction: 'top'}).openTooltip();
+
+            rotateMarker.on('dragstart', startInteract);
+            rotateMarker.on('drag', (e) => {
+                let dragPt = map.project(e.latlng, 18);
+                let centerPt = map.project(imgCenter, 18);
+                
+                let dx = dragPt.x - centerPt.x;
+                let dy = dragPt.y - centerPt.y; 
+                
+                imgAngle = Math.atan2(dx, -dy) * 180 / Math.PI;
+                updateViewFromState();
+            });
+            rotateMarker.on('dragend', endInteract);
+
+            scaleMarker = L.marker(pts.BR, { draggable: true, icon: iconScale }).addTo(map);
+            scaleMarker.bindTooltip("Redimensionar", {permanent: true, direction: 'bottom'}).openTooltip();
+
+            scaleMarker.on('dragstart', startInteract);
+            scaleMarker.on('drag', (e) => {
+                let dragPt = map.project(e.latlng, 18);
+                let centerPt = map.project(imgCenter, 18);
+                
+                let dx = dragPt.x - centerPt.x;
+                let dy = dragPt.y - centerPt.y;
+                let currentDist = Math.sqrt(dx*dx + dy*dy);
+                
+                let bx = 0.5 * baseW_px;
+                let by = 0.5 * baseH_px;
+                let baseDist = Math.sqrt(bx*bx + by*by);
+
+                imgScale = currentDist / baseDist;
+                updateViewFromState();
+            });
+            scaleMarker.on('dragend', endInteract);
+
+            boundsPolygon = L.polygon([pts.TL, pts.TR, pts.BR, pts.BL], {color: "#FE5009", weight: 2, fill: false, dashArray: '6, 6'}).addTo(map);
+            updateViewFromState();
+        }
+
+        function updateViewFromState() {
+            const pts = generateBoundsFromState();
+            
+            if (imageOverlay && typeof imageOverlay.reposition === 'function') {
+                imageOverlay.reposition(L.latLng(pts.TL), L.latLng(pts.TR), L.latLng(pts.BL));
+            }
+            
+            if (boundsPolygon) boundsPolygon.setLatLngs([pts.TL, pts.TR, pts.BR, pts.BL]);
+            if (centerMarker) centerMarker.setLatLng(imgCenter);
+            if (rotateMarker) rotateMarker.setLatLng(pts.TopCenter);
+            if (scaleMarker) scaleMarker.setLatLng(pts.BR);
+
+            renderGeographicPolygons();
+        }
+
+        function clearCalibrationMarkers() {
+            if(centerMarker) map.removeLayer(centerMarker);
+            if(rotateMarker) map.removeLayer(rotateMarker);
+            if(scaleMarker) map.removeLayer(scaleMarker);
+            if(boundsPolygon) map.removeLayer(boundsPolygon);
+        }
+
+        function resetOverlayBounds() {
+            if(confirm("Deseja resetar a posição desta imagem?")) {
+                delete calibrationBounds[currentProject];
+                updateProjectMap();
+            }
+        }
+
+        function hudMove(dir) {
+            const step = 0.00005;
+            let dLat = 0, dLng = 0;
+            if (dir === 'N') dLat = step;
+            if (dir === 'S') dLat = -step;
+            if (dir === 'E') dLng = step;
+            if (dir === 'W') dLng = -step;
+
+            imgCenter = L.latLng(imgCenter.lat + dLat, imgCenter.lng + dLng);
+            updateViewFromState();
+        }
+
+        function hudRotate(degrees) {
+            imgAngle += degrees;
+            updateViewFromState();
+        }
+        
+        function hudScale(factor) {
+            imgScale *= factor;
+            updateViewFromState();
+        }
+
+        function statusLabel(s) {
+            return s === 'disponivel' ? 'Disponível'
+                 : s === 'vendido'    ? 'Vendido'
+                 : s === 'reserva'    ? 'Reserva Técnica'
+                 : 'Indisponível';
+        }
+        function statusColor(s) {
+            return s === 'disponivel' ? '#22c55e'
+                 : s === 'reserva'    ? '#eab308'
+                 : '#ef4444';   // vendido e indisponível em vermelho
+        }
+
+        function selectLot(lot) {
+            if (licensingPolygonLayer) {
+                licensingGroup.clearLayers();
+                licensingPolygonLayer = null;
+            }
+            currentLicensingCity = null;
+
+            selectedLotId = lot.id;
+            renderGeographicPolygons(); 
+
+            document.getElementById('lot-actions').className = "bg-[#0d0d0d]/80 p-4 rounded-xl space-y-3 shadow-lg shadow-orange-900/20 transition-all";
+            document.getElementById('sidebar-status-container').className = "text-[11px] text-gray-400";
+            
+            document.getElementById('sidebar-action-title').innerHTML = `Lote <span class="text-white">${lot.number}</span>`;
+
+            document.getElementById('lot-notes').value = lot.notes || '';
+            const statusText = statusLabel(lot.status);
+            document.getElementById('selected-lot-status').innerText = statusText;
+
+            document.getElementById('simulation-popup').classList.remove('hidden');
+            document.getElementById('sim-header').innerText = `${getProjectName(currentProject)} | Lote ${lot.number}`;
+
+            const stEl = document.getElementById('sim-status');
+            stEl.innerText = statusText;
+            stEl.style.color = statusColor(lot.status);
+
+            // Preço só aparece para lotes disponíveis ou em reserva.
+            // Vendido e indisponível não exibem valor.
+            const mostraPreco = (lot.status === 'disponivel' || lot.status === 'reserva');
+            const precoBox = document.getElementById('sim-preco-box');
+            if (mostraPreco) {
+                precoBox.classList.remove('hidden');
+                document.getElementById('sim-preco').innerText = (lot.preco != null) ? formatCurrency(lot.preco) : 'Sob consulta';
+            } else {
+                precoBox.classList.add('hidden');
+            }
+
+            if (window.innerWidth < 768) toggleSidebar();
+        }
+
+        function closeSimulation() {
+            document.getElementById('simulation-popup').classList.add('hidden');
+        }
+
+        function clearSelection() {
+            selectedLotId = null;
+            currentLicensingCity = null;
+
+            if (licensingPolygonLayer) {
+                licensingGroup.clearLayers();
+                licensingPolygonLayer = null;
+            }
+
+            document.getElementById('lot-actions').className = "hidden";
+            closeSimulation();
+            
+            if (map) map.closePopup();
+            renderGeographicPolygons();
+        }
+
+        function toggleFilter(status) {
+            filters[status] = !filters[status];
+            
+            const btn = document.getElementById(`btn-filter-${status}`);
+            if (btn) {
+                btn.innerHTML = filters[status] ? eyeOpenSVG : eyeClosedSVG;
+            }
+
+            if (selectedLotId) {
+                const list = loteamentosDados[currentProject] || [];
+                const lot = list.find(l => l.id === selectedLotId);
+                if (lot && lot.status === status && !filters[status]) {
+                    selectedLotId = null;
+                    document.getElementById('lot-actions').className = "hidden";
+                    closeSimulation();
+                    if (map) map.closePopup();
+                }
+            }
+
+            renderGeographicPolygons();
+        }
+
+        function searchLot() {
+            const query = document.getElementById('search-input').value.trim();
+            if (query === "") return;
+            const list = loteamentosDados[currentProject];
+            const found = list.find(l => l.number === query);
+            
+            if (found) {
+                if (!filters[found.status]) toggleFilter(found.status);
+                const bounds = calibrationBounds[currentProject];
+                const geoCoords = pixelToLatLng(found.points, bounds);
+                selectLot(found);
+                if (geoCoords.length > 0) map.setView(geoCoords[0], 19, { animate: true, duration: 1 });
+            }
+        }
+    </script>
+</body>
+</html>
