@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lotfinder Earth</title>
+    <title>Lotfinder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -68,7 +68,7 @@
     <aside id="sidebar" class="absolute md:relative w-80 md:w-[340px] bg-[#1e1e1e] shadow-2xl flex flex-col z-[4000] md:z-[3000] shrink-0 h-full transition-transform duration-300 -translate-x-full md:translate-x-0">
         <div class="p-5 bg-gradient-to-r from-[#061b39] to-[#0d0d0d]">
             <h1 class="text-xl font-bold tracking-tight text-white flex justify-between items-center">
-                LOTFINDER EARTH
+                LOTFINDER
                 <div class="flex items-center gap-2">
                     <span class="text-[9px] bg-[#FE5009] px-1.5 py-0.5 rounded text-white font-bold tracking-wider">BETA</span>
                     <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white ml-2 text-xl">✕</button>
@@ -170,7 +170,7 @@
                 </button>
                 <div>
                     <h2 class="text-xl md:text-2xl font-bold tracking-tight text-white flex items-center gap-2 md:gap-3">
-                        Lotfinder Earth 
+                        Lotfinder 
                         <span class="text-gray-500 text-xl font-normal hidden md:inline">|</span> 
                         <span id="current-title" class="text-[#FE5009] text-base md:text-xl">Visão Geral</span>
                     </h2>
@@ -484,7 +484,8 @@
         let map;
         let imageOverlay = null;
         let polygonsGroup = null;
-        let cityMarkersGroup = null; 
+        let cityMarkersGroup = null;
+        let cityMarkerByCode = {};
         let licensingPolygonLayer = null; 
         let licensingGroup = null;
         
@@ -676,8 +677,23 @@
             }, () => { /* negou/erro: mantém visão geral */ }, { timeout: 8000, maximumAge: 600000 });
         }
 
+        // Mostra os marcadores dos empreendimentos vizinhos mesmo com um projeto aberto;
+        // esconde só o do projeto atual (que já tem o overlay desenhado) quando ampliado.
+        function setMarkersVisibility() {
+            if (!map) return;
+            const ampliado = map.getZoom() >= ZOOM_THRESHOLD;
+            const esconder = (ampliado && currentProject && !currentLicensingCity) ? currentProject : null;
+            for (const code in cityMarkerByCode) {
+                const m = cityMarkerByCode[code];
+                if (!m) continue;
+                if (code === esconder) { if (cityMarkersGroup.hasLayer(m)) cityMarkersGroup.removeLayer(m); }
+                else { if (!cityMarkersGroup.hasLayer(m)) cityMarkersGroup.addLayer(m); }
+            }
+        }
+
         function renderMarkers() {
             cityMarkersGroup.clearLayers();
+            cityMarkerByCode = {};
             
             for (let code in calibrationBounds) {
                 let bounds = calibrationBounds[code];
@@ -704,9 +720,10 @@
                     );
                     marker.on('click', () => {
                         document.getElementById('project-select').value = code;
-                        changeProject(); 
+                        changeProject();
                     });
                     cityMarkersGroup.addLayer(marker);
+                    cityMarkerByCode[code] = marker;
                 }
             }
 
@@ -730,7 +747,6 @@
             const mapEl = document.getElementById('map');
             
             if (currentZoom < ZOOM_THRESHOLD) {
-                mapEl.classList.remove('hide-markers');
                 document.getElementById('map-legend').classList.add('hidden');
                 
                 if (imageOverlay && map.hasLayer(imageOverlay)) map.removeLayer(imageOverlay);
@@ -739,7 +755,6 @@
                 
                 if (fitModeActive) toggleFitMode(); 
             } else {
-                mapEl.classList.add('hide-markers');
                 
                 if (currentLicensingCity) {
                     if (imageOverlay && map.hasLayer(imageOverlay)) map.removeLayer(imageOverlay);
@@ -757,6 +772,7 @@
                     if (currentProject) document.getElementById('map-legend').classList.remove('hidden');
                 }
             }
+            setMarkersVisibility();
         }
 
         function openLicensingArea(cityName) {
@@ -821,6 +837,7 @@
                 currentLicensingCity = null;
                 clearSelection();
                 currentProject = selectVal;
+                setMarkersVisibility();
                 
                 if (ADMIN) document.getElementById('map-controls-container').classList.remove('hidden');
                 document.getElementById('map-legend').classList.remove('hidden');
