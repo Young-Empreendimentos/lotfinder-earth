@@ -6,19 +6,22 @@
     <title>Lotfinder</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="favicon.png">
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body { 
-            font-family: 'Space Grotesk', sans-serif;
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
             background-color: #0d0d0d;
             color: #f2f2f2;
             user-select: none;
         }
+        h1, h2, h3, .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .chip-off { opacity: 0.4; }
         #map {
             width: 100%;
             height: calc(100vh - 120px);
@@ -66,17 +69,18 @@
 
     <!-- Gaveta Lateral -->
     <aside id="sidebar" class="absolute md:relative w-80 md:w-[340px] bg-[#1e1e1e] shadow-2xl flex flex-col z-[4000] md:z-[3000] shrink-0 h-full transition-transform duration-300 -translate-x-full md:translate-x-0">
-        <div class="p-5 bg-gradient-to-r from-[#061b39] to-[#0d0d0d]">
-            <h1 class="text-xl font-bold tracking-tight text-white flex justify-between items-center">
-                LOTFINDER
-                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white ml-2 text-xl">✕</button>
-            </h1>
+        <div class="p-5 bg-gradient-to-r from-[#061b39] to-[#0d0d0d] flex justify-between items-center">
+            <div class="flex items-center gap-2.5">
+                <img src="logo.webp" alt="Lotfinder" class="w-9 h-9 rounded-lg" />
+                <span class="text-xl font-bold tracking-tight text-white">Lotfinder</span>
+            </div>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white text-xl">✕</button>
         </div>
 
         <div class="p-4 flex-1 overflow-y-auto space-y-4">
             
             <div>
-                <label class="block text-xs font-semibold text-[#FE5009] uppercase tracking-wider mb-1.5">Selecionar cidade</label>
+                <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Cidade</label>
                 <div class="flex gap-2">
                     <input type="text" id="city-search-input" onkeypress="if(event.key === 'Enter') searchCity()" placeholder="Ex: Santiago RS..." class="flex-1 bg-[#0d0d0d] text-white p-2 rounded-lg text-sm outline-none focus:border-[#FE5009]">
                     <button onclick="searchCity()" class="bg-[#FE5009] text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition shadow-md">Ir</button>
@@ -84,48 +88,36 @@
             </div>
 
             <div class="pt-2 border-t border-[#0d0d0d]">
-                <label class="block text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-2">Selecionar Área ou Projeto</label>
+                <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Empreendimento</label>
                 <select id="project-select" onchange="changeProject()" class="w-full bg-[#0d0d0d] text-[#f2f2f2] p-2.5 rounded-lg outline-none focus:border-[#FE5009] font-medium text-sm">
                     <option value="">Aguardando conexão...</option>
                 </select>
             </div>
 
-            <div class="bg-[#0d0d0d]/40 p-4 rounded-xl mt-2">
-                <h3 class="text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-3">Filtros de Disponibilidade</h3>
-                <div class="grid grid-cols-2 gap-2 text-center text-xs">
-                    <div class="bg-[#323232]/50 p-2 rounded-lg relative group">
-                        <button onclick="toggleFilter('disponivel')" id="btn-filter-disponivel" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                        </button>
-                        <span class="block text-lg font-bold text-white mt-1" id="stat-disp">0</span>
-                        <span class="text-[10px] text-gray-400 uppercase">Livres</span>
+            <div class="mt-2">
+                <h3 class="text-[11px] font-medium text-gray-400 mb-2">Disponibilidade</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <div id="chip-disponivel" onclick="toggleFilter('disponivel')" class="cursor-pointer select-none bg-[#161616] border border-[#2a2a2a] rounded-xl p-2.5 transition hover:border-[#3f3f3f]">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="w-2 h-2 rounded-full inline-block" style="background:#22c55e"></span> Livres</div>
+                        <div class="font-display text-xl font-bold text-white mt-0.5" id="stat-disp">0</div>
                     </div>
-                    <div class="bg-[#751900]/20 p-2 rounded-lg relative group">
-                        <button onclick="toggleFilter('indisponivel')" id="btn-filter-indisponivel" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                        </button>
-                        <span class="block text-lg font-bold text-red-400 mt-1" id="stat-indisp">0</span>
-                        <span class="text-[10px] text-red-300 uppercase">Indisponível</span>
+                    <div id="chip-reserva" onclick="toggleFilter('reserva')" class="cursor-pointer select-none bg-[#161616] border border-[#2a2a2a] rounded-xl p-2.5 transition hover:border-[#3f3f3f]">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="w-2 h-2 rounded-full inline-block" style="background:#eab308"></span> Reserva</div>
+                        <div class="font-display text-xl font-bold text-white mt-0.5" id="stat-res">0</div>
                     </div>
-                    <div class="bg-[#751900]/30 p-2 rounded-lg relative group">
-                        <button onclick="toggleFilter('vendido')" id="btn-filter-vendido" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                        </button>
-                        <span class="block text-lg font-bold text-red-500 mt-1" id="stat-vend">0</span>
-                        <span class="text-[10px] text-gray-400 uppercase">Vendidos</span>
+                    <div id="chip-vendido" onclick="toggleFilter('vendido')" class="cursor-pointer select-none bg-[#161616] border border-[#2a2a2a] rounded-xl p-2.5 transition hover:border-[#3f3f3f]">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="w-2 h-2 rounded-full inline-block" style="background:#751900"></span> Vendidos</div>
+                        <div class="font-display text-xl font-bold text-white mt-0.5" id="stat-vend">0</div>
                     </div>
-                    <div class="bg-yellow-950/40 p-2 rounded-lg relative group">
-                        <button onclick="toggleFilter('reserva')" id="btn-filter-reserva" class="absolute top-1.5 right-1.5 text-white opacity-50 hover:opacity-100 transition">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                        </button>
-                        <span class="block text-lg font-bold text-yellow-400 mt-1" id="stat-res">0</span>
-                        <span class="text-[10px] text-yellow-300 uppercase">Reservas</span>
+                    <div id="chip-indisponivel" onclick="toggleFilter('indisponivel')" class="cursor-pointer select-none bg-[#161616] border border-[#2a2a2a] rounded-xl p-2.5 transition hover:border-[#3f3f3f]">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="w-2 h-2 rounded-full inline-block" style="background:#e24b4a"></span> Indisponível</div>
+                        <div class="font-display text-xl font-bold text-white mt-0.5" id="stat-indisp">0</div>
                     </div>
                 </div>
             </div>
 
             <div>
-                <label class="block text-xs font-semibold text-[#d7d7d9] uppercase tracking-wider mb-1.5">Buscar Lote</label>
+                <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Buscar lote</label>
                 <div class="relative">
                     <input type="text" id="search-input" oninput="searchLot()" placeholder="Ex: 54" class="w-full bg-[#0d0d0d] text-white p-2.5 pl-8 rounded-lg text-sm outline-none focus:border-[#FE5009]">
                     <span class="absolute left-2.5 top-2.5 text-gray-400 text-sm">🔍</span>
@@ -133,16 +125,16 @@
             </div>
 
             <div id="lot-actions" class="hidden bg-[#0d0d0d]/80 p-4 rounded-xl space-y-3 shadow-lg shadow-orange-900/20 transition-all">
-                <div class="flex justify-between items-start border-b border-[#323232] pb-2">
+                <div class="flex justify-between items-start border-b border-[#323232] pb-3">
                     <div>
-                        <h3 class="font-bold text-base text-[#FE5009]" id="sidebar-action-title">Lote <span id="selected-lot-number" class="text-white">--</span></h3>
-                        <p class="text-[11px] text-gray-400" id="sidebar-status-container">Status: <span id="selected-lot-status" class="font-semibold uppercase text-gray-300">--</span></p>
+                        <h3 class="font-display font-bold text-lg text-white" id="sidebar-action-title">Lote <span id="selected-lot-number">--</span></h3>
+                        <div class="mt-1.5" id="sidebar-status-container"><span id="selected-lot-status" class="inline-block text-[11px] font-medium px-2.5 py-0.5 rounded-full">--</span></div>
                     </div>
-                    <button onclick="clearSelection()" class="text-xs text-gray-500 hover:text-white">✕ Fechar</button>
+                    <button onclick="clearSelection()" class="text-sm text-gray-500 hover:text-white">✕</button>
                 </div>
-                
-                <div class="pt-2" id="notes-container">
-                    <label id="notes-label" class="block text-[10px] font-semibold text-[#d7d7d9] uppercase tracking-wider mb-1">Anotações Internas (Somente Leitura)</label>
+
+                <div class="pt-1" id="notes-container">
+                    <label id="notes-label" class="block text-[11px] font-medium text-gray-400 mb-1">Anotações internas</label>
                     <textarea id="lot-notes" readonly class="w-full bg-[#323232]/50 text-gray-300 p-2 rounded text-xs outline-none h-12 resize-none border border-transparent"></textarea>
                 </div>
             </div>
@@ -1305,14 +1297,18 @@
             renderGeographicPolygons(); 
 
             document.getElementById('lot-actions').className = "bg-[#0d0d0d]/80 p-4 rounded-xl space-y-3 shadow-lg shadow-orange-900/20 transition-all";
-            document.getElementById('sidebar-status-container').className = "text-[11px] text-gray-400";
+            document.getElementById('sidebar-status-container').className = "mt-1.5";
             
             document.getElementById('sidebar-action-title').innerHTML = `Lote <span class="text-white">${lot.number}</span>`;
 
             document.getElementById('lot-notes').value = lot.notes || '';
             document.getElementById('notes-container').classList.toggle('hidden', !ADMIN);
             const statusText = statusLabel(lot.status);
-            document.getElementById('selected-lot-status').innerText = statusText;
+            const pill = document.getElementById('selected-lot-status');
+            pill.className = "inline-block text-[11px] font-medium px-2.5 py-0.5 rounded-full";
+            pill.innerText = statusText;
+            pill.style.color = statusColor(lot.status);
+            pill.style.background = statusColor(lot.status) + '22';
 
             document.getElementById('simulation-popup').classList.remove('hidden');
             document.getElementById('sim-header').innerText = `${getProjectName(currentProject)} | Lote ${lot.number}`;
@@ -1358,10 +1354,8 @@
         function toggleFilter(status) {
             filters[status] = !filters[status];
             
-            const btn = document.getElementById(`btn-filter-${status}`);
-            if (btn) {
-                btn.innerHTML = filters[status] ? eyeOpenSVG : eyeClosedSVG;
-            }
+            const chip = document.getElementById(`chip-${status}`);
+            if (chip) chip.classList.toggle('chip-off', !filters[status]);
 
             if (selectedLotId) {
                 const list = loteamentosDados[currentProject] || [];
