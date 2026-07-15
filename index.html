@@ -69,15 +69,8 @@
         <div class="p-5 bg-gradient-to-r from-[#061b39] to-[#0d0d0d]">
             <h1 class="text-xl font-bold tracking-tight text-white flex justify-between items-center">
                 LOTFINDER
-                <div class="flex items-center gap-2">
-                    <span class="text-[9px] bg-[#FE5009] px-1.5 py-0.5 rounded text-white font-bold tracking-wider">BETA</span>
-                    <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white ml-2 text-xl">✕</button>
-                </div>
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white ml-2 text-xl">✕</button>
             </h1>
-            <p class="text-[11px] text-blue-300 mt-1 flex items-center gap-1" id="status-conexao">
-                <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block animate-pulse"></span>
-                Conectando...
-            </p>
         </div>
 
         <div class="p-4 flex-1 overflow-y-auto space-y-4">
@@ -572,10 +565,8 @@
                     try {
                         const liveMapa = await fetchLiveMapa();
                         mergeLiveMapa(liveMapa);
-                        document.getElementById('status-conexao').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-400 inline-block animate-pulse"></span> Online (ao vivo)';
                     } catch (e) {
                         console.error('Falha ao buscar dados ao vivo:', e);
-                        document.getElementById('status-conexao').innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span> Offline (dados do arquivo)';
                     }
 
                     buildDropdown();
@@ -584,7 +575,6 @@
                 })
                 .catch(err => {
                     console.error(err);
-                    document.getElementById('status-conexao').innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span> Erro ao carregar dados.`;
                 });
         });
 
