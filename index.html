@@ -523,7 +523,6 @@
             satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                 maxNativeZoom: 18,
                 maxZoom: 26,
-                detectRetina: true,
                 attribution: 'Esri Satellite'
             });
 
@@ -538,9 +537,8 @@
             map.getPane('labels').style.pointerEvents = 'none';
             labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
                 pane: 'labels',
-                maxNativeZoom: 18,
-                maxZoom: 26,
-                detectRetina: true
+                maxNativeZoom: 17,
+                maxZoom: 26
             });
 
             satelliteLayer.addTo(map);
