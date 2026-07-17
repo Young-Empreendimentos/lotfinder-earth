@@ -203,6 +203,9 @@
                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Preço à Vista</p>
                     <p id="sim-preco" class="text-xl md:text-2xl font-bold text-green-400">--</p>
                 </div>
+                <a id="sim-simular-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden items-center justify-center gap-2 w-full bg-[#FE5009] hover:brightness-110 transition text-white font-bold text-sm py-2.5 rounded-lg">
+                    Simular financiamento →
+                </a>
             </div>
         </div>
 
@@ -460,6 +463,19 @@
         
         let currentProject = null;
         let selectedLotId = null;
+
+        // Código do projeto no Lotfinder (prefixo antes do " - ") -> nome exato do empreendimento
+        // no Simulador de Vendas. PGR fica de fora (sem preço/simulação).
+        const SIM_EMP = {
+            SAY: 'Algarve',
+            SLY: 'Aurora',
+            CAY: 'Erico Verissimo',
+            IDA: 'Ilha dos Açores',
+            MTC: 'Montecarlo',
+            BAY: 'Morada da Coxilha',
+            SBY2: 'Parque Lorena 2',
+        };
+        const SIM_URL = 'https://young-empreendimentos.github.io/simulador-vendas/';
         let currentLicensingCity = null;
         let fitModeActive = false;
         const ZOOM_THRESHOLD = 13; 
@@ -1324,6 +1340,19 @@
                 document.getElementById('sim-preco').innerText = (lot.preco != null) ? formatCurrency(lot.preco) : 'Sob consulta';
             } else {
                 precoBox.classList.add('hidden');
+            }
+
+            // Botão "Simular financiamento": só para lotes disponíveis ou em reserva técnica,
+            // e só em empreendimentos que existem no Simulador de Vendas.
+            const simBtn = document.getElementById('sim-simular-btn');
+            const simEmp = SIM_EMP[String(currentProject || '').split(' - ')[0].trim()];
+            if (mostraPreco && simEmp) {
+                simBtn.href = SIM_URL + '?empreendimento=' + encodeURIComponent(simEmp) + '&lote=' + encodeURIComponent(lot.number);
+                simBtn.classList.remove('hidden');
+                simBtn.classList.add('flex');
+            } else {
+                simBtn.classList.add('hidden');
+                simBtn.classList.remove('flex');
             }
 
             if (window.innerWidth < 768) toggleSidebar();
