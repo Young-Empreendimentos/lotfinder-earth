@@ -114,6 +114,10 @@
                         <div class="font-display text-xl font-bold text-white mt-0.5" id="stat-indisp">0</div>
                     </div>
                 </div>
+                <div id="chip-recentes" onclick="toggleRecentes()" title="Realça no mapa os lotes vendidos nos últimos 30 dias" class="chip-off cursor-pointer select-none bg-[#161616] border border-[#2a2a2a] rounded-xl p-2.5 mt-2 transition hover:border-[#3f3f3f] flex items-center justify-between">
+                    <div class="flex items-center gap-1.5 text-[11px] text-gray-300"><span class="w-2 h-2 rounded-full inline-block" style="background:#ec4899"></span> Vendidos (últimos 30 dias)</div>
+                    <div class="font-display text-xl font-bold text-white" id="stat-recentes">0</div>
+                </div>
             </div>
 
             <div>
@@ -179,6 +183,7 @@
             <div class="flex items-center gap-2 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#22c55e"></span> Disponível</div>
             <div class="flex items-center gap-2 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#eab308"></span> Reserva</div>
             <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm" style="background:#751900"></span> Vendido / Indisponível</div>
+            <div id="legend-recentes" class="hidden items-center gap-2 mt-1.5 pt-1.5 border-t border-[#323232]"><span class="inline-block w-3 h-3 rounded-sm" style="background:#ec4899"></span> Vendido (últimos 30 dias)</div>
         </div>
 
         <!-- Toggle Map Type Button -->
@@ -295,9 +300,12 @@
                     if (hit) {
                         if (hit.s) lot.status = hit.s;
                         lot.preco = (hit.p != null) ? hit.p : null;
+                        lot.venda = hit.v || null;
                     } else {
                         lot.preco = null;
+                        lot.venda = null;
                     }
+                    lot.vendaRecente = vendaEhRecente(lot);
                 }
             }
         }
@@ -460,7 +468,12 @@
         let projetosMeta = {}; 
 
         let filters = { disponivel: true, vendido: true, reserva: true, indisponivel: true };
-        
+
+        // Realce "vendidos nos últimos 30 dias": destaca em rosa (não esconde nada).
+        // Calculado no cliente (hoje - 30 dias) a partir da data da venda que vem do banco.
+        let highlightRecent = false;
+        const RECENTES_DIAS = 30;
+
         let currentProject = null;
         let selectedLotId = null;
 
@@ -515,6 +528,24 @@
 
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        // Data da venda "AAAA-MM-DD" -> "DD/MM/AAAA"
+        function fmtData(iso) {
+            if (!iso) return '';
+            const p = String(iso).split('-');
+            return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+        }
+
+        // True se o lote foi vendido nos últimos RECENTES_DIAS (dia-calendário, estável o dia todo).
+        function vendaEhRecente(lot) {
+            if (!lot || lot.status !== 'vendido' || !lot.venda) return false;
+            const t = Date.parse(lot.venda + 'T00:00:00');
+            if (isNaN(t)) return false;
+            const h = new Date();
+            const hoje0 = new Date(h.getFullYear(), h.getMonth(), h.getDate()).getTime();
+            const diasAtras = (hoje0 - t) / 86400000;
+            return diasAtras >= 0 && diasAtras <= RECENTES_DIAS;
         }
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -997,6 +1028,11 @@
                         ctx.strokeStyle = '#16a34a';
                     }
 
+                    if (highlightRecent && lot.status === 'vendido' && lot.vendaRecente) {
+                        fillColor = 'rgba(236, 72, 153, 0.6)';
+                        ctx.strokeStyle = '#ec4899';
+                    }
+
                     if (lot.id === selectedLotId) {
                         ctx.strokeStyle = '#FE5009';
                         ctx.lineWidth = 6;
@@ -1095,7 +1131,7 @@
 
         function renderGeographicPolygons() {
             polygonsGroup.clearLayers();
-            let disp = 0, vend = 0, indisp = 0, res = 0;
+            let disp = 0, vend = 0, indisp = 0, res = 0, recem = 0;
             const currentList = loteamentosDados[currentProject] || [];
             const bounds = calibrationBounds[currentProject];
 
@@ -1108,6 +1144,7 @@
                 else if (lot.status === 'vendido') vend++;
                 else if (lot.status === 'reserva') res++;
                 else indisp++;   // indisponível (permuta/terceiros/transferido/proposta)
+                if (lot.status === 'vendido' && lot.vendaRecente) recem++;
 
                 if (!filters[lot.status]) return;
 
@@ -1121,14 +1158,27 @@
                 else if (lot.status === 'reserva') { colorOptions.fillColor = '#eab308'; colorOptions.color = '#eab308'; }
                 else { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }   // indisponível (vermelho, como vendido)
 
+                // Realce dos vendidos nos últimos 30 dias (rosa), sem sobrepor o lote selecionado.
+                const destacado = highlightRecent && lot.status === 'vendido' && lot.vendaRecente;
+                if (destacado && lot.id !== selectedLotId) {
+                    colorOptions.fillColor = '#ec4899';
+                    colorOptions.color = '#ec4899';
+                    colorOptions.fillOpacity = 0.7;
+                    colorOptions.weight = 3;
+                }
+
                 const polygon = L.polygon(geoCoords, colorOptions).addTo(polygonsGroup);
 
                 let statusName = lot.status === 'indisponivel' ? 'INDISPONÍVEL' : lot.status.toUpperCase();
+                const vendaLinha = (lot.status === 'vendido' && lot.venda)
+                    ? `<p class="text-[10px] ${destacado ? 'text-[#ec4899] font-bold' : 'text-gray-400'} mt-0.5">Vendido em ${fmtData(lot.venda)}</p>`
+                    : '';
                 let popupHtml = `
                     <div class="text-center font-sans w-32">
                         <span class="text-[10px] text-gray-400 block mb-0.5 uppercase">${getProjectName(currentProject)}</span>
                         <h4 class="font-bold text-lg text-white mb-1">Lote ${lot.number}</h4>
                         <p class="font-bold text-[11px] ${lot.status === 'disponivel' ? 'text-white' : 'text-[#FE5009]'} tracking-wide">${statusName}</p>
+                        ${vendaLinha}
                     </div>`;
                 polygon.bindPopup(popupHtml, { closeButton: false, offset: [0, -5] });
 
@@ -1143,6 +1193,7 @@
             document.getElementById('stat-vend').innerText = vend;
             document.getElementById('stat-indisp').innerText = indisp;
             document.getElementById('stat-res').innerText = res;
+            document.getElementById('stat-recentes').innerText = recem;
         }
 
         let interactTimeout;
@@ -1328,7 +1379,7 @@
             document.getElementById('sim-header').innerText = `${getProjectName(currentProject)} | Lote ${lot.number}`;
 
             const stEl = document.getElementById('sim-status');
-            stEl.innerText = statusText;
+            stEl.innerText = statusText + ((lot.status === 'vendido' && lot.venda) ? ' · ' + fmtData(lot.venda) : '');
             stEl.style.color = statusColor(lot.status);
 
             // Preço só aparece para lotes disponíveis ou em reserva.
@@ -1376,6 +1427,17 @@
             
             if (map) map.closePopup();
             renderGeographicPolygons();
+        }
+
+        function toggleRecentes() {
+            highlightRecent = !highlightRecent;
+            const chip = document.getElementById('chip-recentes');
+            if (chip) chip.classList.toggle('chip-off', !highlightRecent);
+            const lg = document.getElementById('legend-recentes');
+            if (lg) { lg.classList.toggle('hidden', !highlightRecent); lg.classList.toggle('flex', highlightRecent); }
+            // Se o realce está ligado, garante que os vendidos apareçam para poder destacar.
+            if (highlightRecent && !filters.vendido) toggleFilter('vendido');
+            else renderGeographicPolygons();
         }
 
         function toggleFilter(status) {
