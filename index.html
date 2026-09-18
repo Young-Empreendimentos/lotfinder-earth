@@ -273,9 +273,9 @@
     </main>
 
     <!-- ===== MODAL: Gerar tabela de vendas (área logada) ===== -->
-    <div id="tv-modal" class="hidden fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-start md:items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div class="bg-[#1e1e1e] border border-[#323232] rounded-xl w-full max-w-5xl my-4 shadow-2xl">
-        <div class="flex justify-between items-center p-4 border-b border-[#323232] bg-gradient-to-r from-[#061b39] to-[#0d0d0d] rounded-t-xl">
+    <div id="tv-modal" class="hidden fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-6">
+      <div class="bg-[#1e1e1e] border border-[#323232] rounded-xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl">
+        <div class="flex justify-between items-center p-4 border-b border-[#323232] bg-gradient-to-r from-[#061b39] to-[#0d0d0d] rounded-t-xl shrink-0">
           <h2 class="text-lg font-bold text-white flex items-center gap-2"><span>📊</span> Tabela de vendas</h2>
           <div class="flex items-center gap-3">
             <span id="tv-user" class="text-[11px] text-gray-400 hidden md:inline"></span>
@@ -284,7 +284,7 @@
           </div>
         </div>
 
-        <div class="p-4 space-y-4">
+        <div class="p-4 space-y-4 overflow-y-auto min-h-0">
           <!-- Controles -->
           <div class="grid md:grid-cols-3 gap-4">
             <div>
@@ -313,7 +313,7 @@
             </div>
           </div>
 
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3 sticky top-0 z-10 bg-[#1e1e1e] py-2 -mx-4 px-4 border-b border-[#2a2a2a]">
             <button onclick="gerarTabela()" id="tv-gerar" class="bg-[#FE5009] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition">Gerar</button>
             <span id="tv-msg" class="text-[12px] text-gray-400"></span>
             <div class="flex-1"></div>
