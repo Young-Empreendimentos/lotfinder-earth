@@ -13,6 +13,12 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <!-- Área logada (Tabela de vendas): login Supabase + exportação PDF/Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
     <style>
         body {
             font-family: 'Be Vietnam Pro', sans-serif;
@@ -147,6 +153,10 @@
                 <button id="btn-download-map" onclick="downloadMap()" class="hidden w-full bg-blue-600 text-white py-2 rounded text-xs font-bold hover:bg-blue-500 transition shadow-md mb-2">
                     📸 Baixar Mapa do Loteamento
                 </button>
+                <button id="btn-tabela-vendas" onclick="abrirTabelaVendas()" class="w-full bg-[#FE5009] text-white py-2 rounded text-xs font-bold hover:bg-orange-600 transition shadow-md flex items-center justify-center gap-1.5">
+                    <span>📊</span> Gerar tabela de vendas
+                    <span id="tv-lock" class="text-[10px] opacity-80">🔒</span>
+                </button>
             </div>
         </div>
     </aside>
@@ -250,6 +260,80 @@
             </div>
         </div>
     </main>
+
+    <!-- ===== MODAL: Gerar tabela de vendas (área logada) ===== -->
+    <div id="tv-modal" class="hidden fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-start md:items-center justify-center p-3 md:p-6 overflow-y-auto">
+      <div class="bg-[#1e1e1e] border border-[#323232] rounded-xl w-full max-w-5xl my-4 shadow-2xl">
+        <div class="flex justify-between items-center p-4 border-b border-[#323232] bg-gradient-to-r from-[#061b39] to-[#0d0d0d] rounded-t-xl">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2"><span>📊</span> Tabela de vendas</h2>
+          <div class="flex items-center gap-3">
+            <span id="tv-user" class="text-[11px] text-gray-400 hidden md:inline"></span>
+            <button onclick="sairTabela()" class="text-[11px] text-gray-400 hover:text-white underline">sair</button>
+            <button onclick="fecharTabela()" class="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+          </div>
+        </div>
+
+        <div class="p-4 space-y-4">
+          <!-- Controles -->
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Empreendimento</label>
+              <select id="tv-emp" class="w-full bg-[#0d0d0d] text-[#f2f2f2] p-2.5 rounded-lg outline-none focus:border-[#FE5009] text-sm"></select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Linhas (status)</label>
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-gray-200">
+                <label class="flex items-center gap-1.5"><input type="radio" name="tv-filtro" value="disponivel" checked> Disponíveis</label>
+                <label class="flex items-center gap-1.5"><input type="radio" name="tv-filtro" value="reserva"> Reserva técnica</label>
+                <label class="flex items-center gap-1.5"><input type="radio" name="tv-filtro" value="vendido"> Vendidos</label>
+                <label class="flex items-center gap-1.5"><input type="radio" name="tv-filtro" value="todos"> Todos</label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-gray-400 mb-1.5">Colunas</label>
+              <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[12px] text-gray-200">
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="num_lote" checked> Nº lote</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="area" checked> Área</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="matricula" checked> Matrícula</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_av" checked> Preço à vista</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_promocional" checked> Preço promocional</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_convencional" checked> Preço convencional</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button onclick="gerarTabela()" id="tv-gerar" class="bg-[#FE5009] text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition">Gerar</button>
+            <span id="tv-msg" class="text-[12px] text-gray-400"></span>
+            <div class="flex-1"></div>
+            <button onclick="exportarPDF()" id="tv-pdf" class="hidden bg-[#0d0d0d] border border-[#323232] text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-black transition">⬇ PDF</button>
+            <button onclick="exportarExcel()" id="tv-xlsx" class="hidden bg-[#0d0d0d] border border-[#323232] text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-black transition">⬇ Excel</button>
+          </div>
+
+          <!-- Prévia -->
+          <div id="tv-preview" class="hidden border border-[#323232] rounded-lg overflow-hidden">
+            <div class="bg-white text-[#0d0d0d] p-4" id="tv-print">
+              <div class="flex items-center justify-between border-b-2 border-[#FE5009] pb-3 mb-3">
+                <div class="flex items-center gap-3">
+                  <div id="tv-logo-young" class="font-bold text-xl tracking-tight text-[#061b39]">YOUNG</div>
+                  <div class="text-xs text-gray-500 leading-tight">Empreendimentos<br>Imobiliários</div>
+                </div>
+                <div class="text-right">
+                  <div id="tv-titulo" class="font-bold text-lg text-[#061b39]">Tabela de Vendas</div>
+                  <div id="tv-emp-nome" class="text-sm text-gray-700"></div>
+                  <div id="tv-data" class="text-[11px] text-gray-500"></div>
+                </div>
+                <div id="tv-logo-emp"></div>
+              </div>
+              <div class="overflow-x-auto">
+                <table id="tv-tabela" class="w-full text-[12px] border-collapse"></table>
+              </div>
+              <div class="text-[9px] text-gray-400 mt-3" id="tv-rodape"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
         function toggleSidebar() {
@@ -1474,6 +1558,180 @@
                 if (geoCoords.length > 0) map.setView(geoCoords[0], 19, { animate: true, duration: 1 });
             }
         }
+
+        // ============================================================
+        // ÁREA LOGADA — Gerador de tabela de vendas
+        // O mapa segue público; só esta função exige login (Google @young + allowlist).
+        // A chave anon abaixo é usada SÓ para login (ela não lê mais dado sensível desde
+        // 09/09/2026); os dados da tabela vêm da Edge Function `tabela-vendas` (service_role
+        // no servidor), que calcula o preço convencional sem nunca expor os juros.
+        // ============================================================
+        const TV_SB_URL = "https://vvtympzatclvjaqucebr.supabase.co";
+        const TV_SB_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2dHltcHphdGNsdmphcXVjZWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NTI1NzYsImV4cCI6MjA4NjAyODU3Nn0.C8vWcljx6veAQ0hCi0ms7Ixm6NxhSdWBDeRgUy2Kz50";
+        let tvClient = null;
+        function tvSb() {
+            if (!tvClient && window.supabase && window.supabase.createClient) {
+                tvClient = window.supabase.createClient(TV_SB_URL, TV_SB_ANON);
+            }
+            return tvClient;
+        }
+        const TV_EMPS = ['Algarve','Aurora','Erico Verissimo','Ilha dos Açores','Montecarlo','Morada da Coxilha','Parque Lorena 2','Parque da Guarda Residence'];
+        const TV_COLS = [
+            { key:'num_lote', label:'Nº lote', align:'left' },
+            { key:'area', label:'Área (m²)', align:'right' },
+            { key:'matricula', label:'Matrícula', align:'left' },
+            { key:'preco_av', label:'Preço à vista', money:true, align:'right' },
+            { key:'preco_promocional', label:'Preço promocional', money:true, align:'right' },
+            { key:'preco_convencional', label:'Preço convencional', money:true, align:'right' },
+        ];
+        let tvUltima = null;
+        const tvBRL = (v) => (v==null||v==='') ? '—' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
+        const tvFiltroLabel = (f) => f==='disponivel'?'Disponíveis':f==='reserva'?'Reserva técnica':f==='vendido'?'Vendidos':'Todos';
+
+        async function tvSessao() {
+            const c = tvSb(); if (!c) return null;
+            try { const { data } = await c.auth.getSession(); return data?.session || null; } catch { return null; }
+        }
+
+        async function abrirTabelaVendas() {
+            const c = tvSb();
+            if (!c) { alert('Não foi possível iniciar o login (biblioteca não carregou). Recarregue a página.'); return; }
+            const sess = await tvSessao();
+            if (!sess) {
+                await c.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname + '?tabela=1' } });
+                return;
+            }
+            tvMontarModal(sess);
+        }
+
+        function tvMontarModal(sess) {
+            const sel = document.getElementById('tv-emp');
+            const atualNome = SIM_EMP[String(currentProject||'').split(' - ')[0].trim()] || '';
+            sel.innerHTML = TV_EMPS.map(e => `<option value="${e}" ${e===atualNome?'selected':''}>${e}</option>`).join('');
+            document.getElementById('tv-user').innerText = sess?.user?.email || '';
+            document.getElementById('tv-msg').innerText = '';
+            document.getElementById('tv-preview').classList.add('hidden');
+            document.getElementById('tv-pdf').classList.add('hidden');
+            document.getElementById('tv-xlsx').classList.add('hidden');
+            document.getElementById('tv-modal').classList.remove('hidden');
+        }
+
+        function fecharTabela() { document.getElementById('tv-modal').classList.add('hidden'); }
+        async function sairTabela() {
+            const c = tvSb(); if (c) { try { await c.auth.signOut(); } catch (e) {} }
+            fecharTabela(); tvAtualizarCadeado();
+        }
+
+        function tvColsSelecionadas() {
+            const set = new Set(Array.from(document.querySelectorAll('.tv-col:checked')).map(x=>x.value));
+            return TV_COLS.filter(c => set.has(c.key));
+        }
+
+        async function gerarTabela() {
+            const emp = document.getElementById('tv-emp').value;
+            const filtro = (document.querySelector('input[name=tv-filtro]:checked')||{}).value || 'todos';
+            const msg = document.getElementById('tv-msg');
+            const btn = document.getElementById('tv-gerar');
+            if (!tvColsSelecionadas().length) { msg.style.color='#f87171'; msg.innerText='Escolha ao menos uma coluna.'; return; }
+            btn.disabled = true; msg.style.color = '#9ca3af'; msg.innerText = 'Gerando…';
+            try {
+                const c = tvSb();
+                const { data, error } = await c.functions.invoke('tabela-vendas', { body: { empreendimento: emp, filtro } });
+                if (error) {
+                    let m = error.message || 'Falha ao gerar.';
+                    try { const b = await error.context.json(); m = b.mensagem || b.erro || m; } catch (e) {}
+                    msg.style.color = '#f87171'; msg.innerText = m; btn.disabled = false; return;
+                }
+                tvUltima = data;
+                tvRender(data);
+                msg.style.color = '#9ca3af'; msg.innerText = `${data.total} lote(s).`;
+            } catch (e) {
+                msg.style.color = '#f87171'; msg.innerText = 'Erro: ' + (e && e.message ? e.message : e);
+            }
+            btn.disabled = false;
+        }
+
+        function tvRender(data) {
+            const cols = tvColsSelecionadas();
+            document.getElementById('tv-emp-nome').innerText = data.empreendimento + ' · ' + tvFiltroLabel(data.filtro);
+            document.getElementById('tv-data').innerText = 'Gerada em ' + new Date(data.gerado_em).toLocaleString('pt-BR');
+            const th = '<thead><tr>' + cols.map(c=>`<th style="text-align:${c.align};padding:6px 8px;border-bottom:2px solid #061b39;color:#061b39;white-space:nowrap">${c.label}</th>`).join('') + '</tr></thead>';
+            const rows = data.linhas.map((l,i)=>{
+                const tds = cols.map(c=>{
+                    let v = l[c.key];
+                    v = c.money ? tvBRL(v) : (v==null||v===''?'—':v);
+                    return `<td style="text-align:${c.align};padding:5px 8px;border-bottom:1px solid #e5e7eb">${v}</td>`;
+                }).join('');
+                return `<tr style="background:${i%2?'#f8fafc':'#ffffff'}">${tds}</tr>`;
+            }).join('');
+            document.getElementById('tv-tabela').innerHTML = th + '<tbody>' + rows + '</tbody>';
+            document.getElementById('tv-rodape').innerText = 'Preço convencional = entrada de 10% + ITBI e registro + saldo em 60x (juros do empreendimento). ITBI ' + data.itbi_percentual + '%. Valores sujeitos a alteração.';
+            document.getElementById('tv-preview').classList.remove('hidden');
+            document.getElementById('tv-pdf').classList.remove('hidden');
+            document.getElementById('tv-xlsx').classList.remove('hidden');
+        }
+
+        function exportarExcel() {
+            if (!tvUltima || !window.XLSX) return;
+            const cols = tvColsSelecionadas();
+            const aoa = [cols.map(c=>c.label)];
+            tvUltima.linhas.forEach(l => aoa.push(cols.map(c => c.money ? (l[c.key]==null?'':Number(l[c.key])) : (l[c.key]==null?'':l[c.key]))));
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Tabela');
+            XLSX.writeFile(wb, tvNomeArquivo('xlsx'));
+        }
+
+        function exportarPDF() {
+            if (!tvUltima || !window.jspdf) return;
+            const cols = tvColsSelecionadas();
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+            const W = doc.internal.pageSize.getWidth();
+            doc.setFont(undefined,'bold'); doc.setFontSize(16); doc.setTextColor(6,27,57);
+            doc.text('YOUNG Empreendimentos', 40, 42);
+            doc.setFontSize(13); doc.text('Tabela de Vendas', W-40, 34, { align:'right' });
+            doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(90);
+            doc.text(tvUltima.empreendimento + ' · ' + tvFiltroLabel(tvUltima.filtro), W-40, 50, { align:'right' });
+            doc.text('Gerada em ' + new Date(tvUltima.gerado_em).toLocaleString('pt-BR'), W-40, 63, { align:'right' });
+            doc.setDrawColor(254,80,9); doc.setLineWidth(2); doc.line(40,72,W-40,72);
+            const head = [cols.map(c=>c.label)];
+            const body = tvUltima.linhas.map(l => cols.map(c => c.money ? tvBRL(l[c.key]) : (l[c.key]==null||l[c.key]===''?'—':String(l[c.key]))));
+            doc.autoTable({
+                head, body, startY: 82, styles:{ fontSize:8, cellPadding:3 },
+                headStyles:{ fillColor:[6,27,57], textColor:255 }, alternateRowStyles:{ fillColor:[248,250,252] },
+                margin:{ left:40, right:40 },
+            });
+            const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 82;
+            doc.setFontSize(7); doc.setTextColor(120);
+            doc.text('Preço convencional = 10% entrada + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.', 40, finalY + 16);
+            doc.save(tvNomeArquivo('pdf'));
+        }
+
+        function tvNomeArquivo(ext) {
+            const emp = (tvUltima?.empreendimento || 'tabela').replace(/[^A-Za-z0-9]/g,'');
+            return `Tabela_${emp}_${new Date().toISOString().slice(0,10)}.${ext}`;
+        }
+
+        async function tvAtualizarCadeado() {
+            const lock = document.getElementById('tv-lock');
+            if (!lock) return;
+            const sess = await tvSessao();
+            lock.innerText = sess ? '' : '🔒';
+        }
+
+        // Após o login Google, o Google volta para ?tabela=1 — reabre o modal automaticamente.
+        document.addEventListener('DOMContentLoaded', () => {
+            tvAtualizarCadeado();
+            if (new URLSearchParams(location.search).get('tabela') === '1') {
+                setTimeout(async () => {
+                    const sess = await tvSessao();
+                    if (sess) tvMontarModal(sess);
+                    const u = new URL(location.href); u.searchParams.delete('tabela'); history.replaceState({}, '', u);
+                    tvAtualizarCadeado();
+                }, 500);
+            }
+        });
     </script>
 <!-- Celebração de venda do Pingolead: cartão + confete (10 s) + fanfarra 2x, via Supabase Realtime -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
