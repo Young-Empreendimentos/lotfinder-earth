@@ -70,6 +70,18 @@
 </head>
 <body class="h-screen flex overflow-hidden relative">
 
+    <!-- Gate de acesso: o Lotfinder inteiro exige login (Google @young). Visível por padrão;
+         escondido só depois que a sessão é confirmada. -->
+    <div id="tv-login" class="fixed inset-0 z-[6000] bg-[#0d0d0d] flex items-center justify-center p-6">
+      <div class="text-center max-w-xs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#FE5009" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-12 h-12 mx-auto mb-3"><path d="M12 21s7-6.5 7-12A7 7 0 0 0 5 9c0 5.5 7 12 7 12Z"/><circle cx="12" cy="9" r="2.6"/></svg>
+        <h1 class="text-2xl font-bold text-white mb-1">Lotfinder</h1>
+        <p class="text-gray-400 text-sm mb-6">Acesso restrito. Entre com sua conta Young.</p>
+        <button onclick="entrarGoogle()" class="w-full bg-[#FE5009] text-white py-2.5 rounded-lg text-sm font-bold hover:bg-orange-600 transition">Entrar com Google</button>
+        <p id="tv-login-erro" class="text-red-400 text-xs mt-4"></p>
+      </div>
+    </div>
+
     <!-- Backdrop escuro para mobile -->
     <div id="mobile-backdrop" onclick="toggleSidebar()" class="hidden md:hidden absolute inset-0 bg-black/70 z-[3500] backdrop-blur-sm transition-opacity"></div>
 
@@ -155,7 +167,6 @@
                 </button>
                 <button id="btn-tabela-vendas" onclick="abrirTabelaVendas()" class="w-full bg-[#FE5009] text-white py-2 rounded text-xs font-bold hover:bg-orange-600 transition shadow-md flex items-center justify-center gap-1.5">
                     <span>📊</span> Gerar tabela de vendas
-                    <span id="tv-lock" class="text-[10px] opacity-80">🔒</span>
                 </button>
             </div>
         </div>
@@ -632,7 +643,9 @@
             return diasAtras >= 0 && diasAtras <= RECENTES_DIAS;
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
+        function initMapa() {
+            if (window.__mapaIniciado) return;
+            window.__mapaIniciado = true;
             map = L.map('map', { zoomControl: true, zoomControlPosition: 'bottomright' }).setView([-30.0346, -51.2177], 7);
 
             satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -697,7 +710,7 @@
                 .catch(err => {
                     console.error(err);
                 });
-        });
+        }
 
         function toggleMapType() {
             const btnTooltip = document.getElementById('map-toggle-tooltip');
@@ -1576,6 +1589,27 @@
             return tvClient;
         }
         const TV_EMPS = ['Algarve','Aurora','Erico Verissimo','Ilha dos Açores','Montecarlo','Morada da Coxilha','Parque Lorena 2','Parque da Guarda Residence'];
+        const TV_LOGOS = {
+            'Algarve':'logos/algarve.png', 'Aurora':'logos/aurora.png', 'Erico Verissimo':'logos/erico.png',
+            'Ilha dos Açores':'logos/ilha.png', 'Montecarlo':'logos/montecarlo.png', 'Morada da Coxilha':'logos/morada.png',
+            'Parque Lorena 2':'logos/lorena.png', 'Parque da Guarda Residence':'logos/guarda.png',
+        };
+        // Carrega uma imagem (mesma origem) e devolve dataURL + dimensões (p/ o PDF).
+        function tvImgDataURL(src) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const c = document.createElement('canvas');
+                        c.width = img.naturalWidth; c.height = img.naturalHeight;
+                        c.getContext('2d').drawImage(img, 0, 0);
+                        resolve({ url: c.toDataURL('image/png'), w: img.naturalWidth, h: img.naturalHeight });
+                    } catch (e) { resolve(null); }
+                };
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
         const TV_COLS = [
             { key:'num_lote', label:'Nº lote', align:'left' },
             { key:'area', label:'Área (m²)', align:'right' },
@@ -1594,13 +1628,8 @@
         }
 
         async function abrirTabelaVendas() {
-            const c = tvSb();
-            if (!c) { alert('Não foi possível iniciar o login (biblioteca não carregou). Recarregue a página.'); return; }
             const sess = await tvSessao();
-            if (!sess) {
-                await c.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname + '?tabela=1' } });
-                return;
-            }
+            if (!sess) { mostrarLogin(); return; }
             tvMontarModal(sess);
         }
 
@@ -1619,7 +1648,7 @@
         function fecharTabela() { document.getElementById('tv-modal').classList.add('hidden'); }
         async function sairTabela() {
             const c = tvSb(); if (c) { try { await c.auth.signOut(); } catch (e) {} }
-            fecharTabela(); tvAtualizarCadeado();
+            location.reload();
         }
 
         function tvColsSelecionadas() {
@@ -1655,6 +1684,8 @@
             const cols = tvColsSelecionadas();
             document.getElementById('tv-emp-nome').innerText = data.empreendimento + ' · ' + tvFiltroLabel(data.filtro);
             document.getElementById('tv-data').innerText = 'Gerada em ' + new Date(data.gerado_em).toLocaleString('pt-BR');
+            const logoEmp = TV_LOGOS[data.empreendimento];
+            document.getElementById('tv-logo-emp').innerHTML = logoEmp ? `<img src="${logoEmp}" alt="" style="height:46px;display:block">` : '';
             const th = '<thead><tr>' + cols.map(c=>`<th style="text-align:${c.align};padding:6px 8px;border-bottom:2px solid #061b39;color:#061b39;white-space:nowrap">${c.label}</th>`).join('') + '</tr></thead>';
             const rows = data.linhas.map((l,i)=>{
                 const tds = cols.map(c=>{
@@ -1682,15 +1713,23 @@
             XLSX.writeFile(wb, tvNomeArquivo('xlsx'));
         }
 
-        function exportarPDF() {
+        async function exportarPDF() {
             if (!tvUltima || !window.jspdf) return;
             const cols = tvColsSelecionadas();
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
             const W = doc.internal.pageSize.getWidth();
-            doc.setFont(undefined,'bold'); doc.setFontSize(16); doc.setTextColor(6,27,57);
-            doc.text('YOUNG Empreendimentos', 40, 42);
-            doc.setFontSize(13); doc.text('Tabela de Vendas', W-40, 34, { align:'right' });
+            const logoSrc = TV_LOGOS[tvUltima.empreendimento];
+            const logo = logoSrc ? await tvImgDataURL(logoSrc) : null;
+            if (logo && logo.h) {
+                const h = 34, w = h * (logo.w / logo.h);
+                try { doc.addImage(logo.url, 'PNG', 40, 22, w, h); } catch (e) {}
+            } else {
+                doc.setFont(undefined,'bold'); doc.setFontSize(16); doc.setTextColor(6,27,57);
+                doc.text('YOUNG Empreendimentos', 40, 42);
+            }
+            doc.setFont(undefined,'bold'); doc.setFontSize(13); doc.setTextColor(6,27,57);
+            doc.text('Tabela de Vendas', W-40, 34, { align:'right' });
             doc.setFont(undefined,'normal'); doc.setFontSize(10); doc.setTextColor(90);
             doc.text(tvUltima.empreendimento + ' · ' + tvFiltroLabel(tvUltima.filtro), W-40, 50, { align:'right' });
             doc.text('Gerada em ' + new Date(tvUltima.gerado_em).toLocaleString('pt-BR'), W-40, 63, { align:'right' });
@@ -1713,25 +1752,29 @@
             return `Tabela_${emp}_${new Date().toISOString().slice(0,10)}.${ext}`;
         }
 
-        async function tvAtualizarCadeado() {
-            const lock = document.getElementById('tv-lock');
-            if (!lock) return;
-            const sess = await tvSessao();
-            lock.innerText = sess ? '' : '🔒';
+        // ===== Gate de acesso: o Lotfinder inteiro exige login (Google @young) =====
+        function mostrarLogin(erro) {
+            const el = document.getElementById('tv-login');
+            if (el) el.classList.remove('hidden');
+            const e = document.getElementById('tv-login-erro');
+            if (e) e.innerText = erro || '';
         }
-
-        // Após o login Google, o Google volta para ?tabela=1 — reabre o modal automaticamente.
-        document.addEventListener('DOMContentLoaded', () => {
-            tvAtualizarCadeado();
-            if (new URLSearchParams(location.search).get('tabela') === '1') {
-                setTimeout(async () => {
-                    const sess = await tvSessao();
-                    if (sess) tvMontarModal(sess);
-                    const u = new URL(location.href); u.searchParams.delete('tabela'); history.replaceState({}, '', u);
-                    tvAtualizarCadeado();
-                }, 500);
-            }
-        });
+        function esconderLogin() {
+            const el = document.getElementById('tv-login');
+            if (el) el.classList.add('hidden');
+        }
+        async function entrarGoogle() {
+            const c = tvSb();
+            if (!c) { mostrarLogin('Não foi possível iniciar o login. Recarregue a página.'); return; }
+            await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+        }
+        async function bootstrapLotfinder() {
+            const sess = await tvSessao();
+            if (!sess) { mostrarLogin(); return; }
+            esconderLogin();
+            initMapa();
+        }
+        document.addEventListener('DOMContentLoaded', bootstrapLotfinder);
     </script>
 <!-- Celebração de venda do Pingolead: cartão + confete (10 s) + fanfarra 2x, via Supabase Realtime -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
