@@ -674,10 +674,12 @@
                 attribution: 'Esri Satellite'
             });
 
-            streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                maxNativeZoom: 19,
+            // Mapa político: Esri World Street Map (mesmo provedor do satélite, sem chave).
+            // O CARTO passou a exigir API key e só devolvia "API key required".
+            streetLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                maxNativeZoom: 18,
                 maxZoom: 26,
-                attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                attribution: 'Esri Street Map'
             });
 
             map.createPane('labels');
