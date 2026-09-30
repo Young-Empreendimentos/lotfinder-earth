@@ -270,6 +270,23 @@
                 </div>
             </div>
         </div>
+
+        <!-- Exportar a calibração ajustada (modo admin) -->
+        <div id="calib-export" class="hidden absolute inset-0 z-[3000] bg-black/70 flex items-center justify-center p-4">
+            <div class="bg-[#1e1e1e] border border-[#FE5009] rounded-xl p-5 w-full max-w-lg shadow-2xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[#FE5009] font-bold text-sm">Ajuste de <span id="calib-export-proj"></span></h3>
+                    <button onclick="fecharExportCalibracao()" class="text-gray-400 hover:text-white text-lg">✕</button>
+                </div>
+                <p class="text-xs text-gray-300">O ajuste vale só nesta aba. Para publicar, copie o texto abaixo e envie para quem mantém o Lotfinder, ou baixe o <code>dados.json</code> atualizado e substitua o do repositório.</p>
+                <textarea id="calib-export-texto" readonly class="w-full h-24 bg-[#0d0d0d] text-gray-200 p-2 rounded text-[11px] font-mono outline-none resize-none border border-[#323232]"></textarea>
+                <div class="flex items-center gap-2">
+                    <button onclick="copiarCalibracao()" class="bg-[#FE5009] text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition">Copiar</button>
+                    <button onclick="baixarDadosJson()" class="bg-[#0d0d0d] border border-[#323232] text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-black transition">⬇ Baixar dados.json</button>
+                    <span id="calib-export-msg" class="text-[11px] text-green-400"></span>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- ===== MODAL: Gerar tabela de vendas (área logada) ===== -->
@@ -560,7 +577,8 @@
         let calibrationBounds = {}; 
         let licensingData = {}; 
         let nomesProjetos = {}; 
-        let projetosMeta = {}; 
+        let projetosMeta = {};
+        let dadosOriginais = null;
 
         let filters = { disponivel: true, vendido: true, reserva: true, indisponivel: true };
 
@@ -681,6 +699,8 @@
             fetch('dados.json', { cache: 'no-store' })
                 .then(res => res.json())
                 .then(async (configData) => {
+                    // Cópia intacta do arquivo, para exportar o dados.json com a calibração ajustada
+                    dadosOriginais = JSON.parse(JSON.stringify(configData));
                     loteamentosDados = configData.data || {};
                     calibrationBounds = configData.calibration || {};
                     licensingData = configData.licensing || {};
@@ -1320,9 +1340,46 @@
             } else {
                 btn.className = "bg-[#0d0d0d] text-[#f2f2f2] px-4 py-2 rounded-lg text-xs font-bold hover:bg-black transition border border-[#323232] flex items-center gap-2";
                 btn.innerHTML = "🔧 Ajustar Imagem no Satélite";
-                hud.className = "hidden"; 
+                hud.className = "hidden";
                 clearCalibrationMarkers();
+                abrirExportCalibracao();
             }
+        }
+
+        // O ajuste só vale nesta aba; para ficar no site, a calibração precisa entrar no dados.json.
+        function calibracaoAtual() {
+            return calibrationBounds[currentProject].map(p => [+p[0].toFixed(9), +p[1].toFixed(9)]);
+        }
+        function calibracaoTexto() {
+            return `"${currentProject}": ${JSON.stringify(calibracaoAtual())}`;
+        }
+        function abrirExportCalibracao() {
+            if (!currentProject || !calibrationBounds[currentProject]) return;
+            document.getElementById('calib-export-proj').innerText = getProjectName(currentProject);
+            document.getElementById('calib-export-texto').value = calibracaoTexto();
+            document.getElementById('calib-export-msg').innerText = '';
+            document.getElementById('calib-export').classList.remove('hidden');
+        }
+        function fecharExportCalibracao() {
+            document.getElementById('calib-export').classList.add('hidden');
+        }
+        async function copiarCalibracao() {
+            const txt = document.getElementById('calib-export-texto');
+            try { await navigator.clipboard.writeText(txt.value); }
+            catch (e) { txt.select(); document.execCommand('copy'); }
+            document.getElementById('calib-export-msg').innerText = 'Copiado.';
+        }
+        function baixarDadosJson() {
+            if (!dadosOriginais) return;
+            const d = JSON.parse(JSON.stringify(dadosOriginais));
+            d.calibration = d.calibration || {};
+            d.calibration[currentProject] = calibracaoAtual();
+            const blob = new Blob([JSON.stringify(d, null, 1)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'dados.json';
+            a.click();
+            URL.revokeObjectURL(a.href);
         }
 
         function activateCalibrationMarkers() {
