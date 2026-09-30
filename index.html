@@ -67,7 +67,7 @@
         .sim-input { background: #323232; border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; outline: none; font-size: 13px; width: 100%; }
         .sim-input:focus { border-color: #FE5009; }
         /* Lote disponível: borda branca com leve brilho (sem cor por cima da implantação) */
-        .lote-disponivel { filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)); }
+        .lote-disponivel { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45)); }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden relative">
@@ -1139,7 +1139,7 @@
                     ctx.fillStyle = fillColor;
                     ctx.fill();
                     const brilho = lot.status === 'disponivel' && lot.id !== selectedLotId;
-                    if (brilho) { ctx.shadowColor = 'rgba(255, 255, 255, 0.85)'; ctx.shadowBlur = 10; }
+                    if (brilho) { ctx.shadowColor = 'rgba(255, 255, 255, 0.45)'; ctx.shadowBlur = 6; }
                     ctx.stroke();
                     if (brilho) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
                 });
