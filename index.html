@@ -66,6 +66,8 @@
 
         .sim-input { background: #323232; border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; outline: none; font-size: 13px; width: 100%; }
         .sim-input:focus { border-color: #FE5009; }
+        /* Lote disponível: borda branca com leve brilho (sem cor por cima da implantação) */
+        .lote-disponivel { filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)); }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden relative">
@@ -1121,7 +1123,7 @@
                         fillColor = 'rgba(117, 25, 0, 0.45)';
                         ctx.strokeStyle = '#751900';
                     } else if (lot.status === 'disponivel') {
-                        ctx.strokeStyle = 'rgba(0, 0, 0, 0)';
+                        ctx.strokeStyle = '#ffffff';
                     }
 
                     if (highlightRecent && lot.status === 'vendido' && lot.vendaRecente) {
@@ -1136,7 +1138,10 @@
 
                     ctx.fillStyle = fillColor;
                     ctx.fill();
+                    const brilho = lot.status === 'disponivel' && lot.id !== selectedLotId;
+                    if (brilho) { ctx.shadowColor = 'rgba(255, 255, 255, 0.85)'; ctx.shadowBlur = 10; }
                     ctx.stroke();
+                    if (brilho) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
                 });
 
                 const link = document.createElement('a');
@@ -1249,8 +1254,9 @@
                 let colorOptions = { weight: 1.5, color: '#d7d7d9', fillOpacity: 0.45 };
                 if (lot.id === selectedLotId) { colorOptions.color = '#FE5009'; colorOptions.weight = 3.5; }
 
-                // Disponível: sem cor por cima, mostra a implantação como ela é (continua clicável).
-                if (lot.status === 'disponivel') { colorOptions.fillColor = '#000'; colorOptions.fillOpacity = 0; if (lot.id !== selectedLotId) colorOptions.weight = 0; }
+                // Disponível: sem cor por cima, mostra a implantação como ela é (continua clicável),
+                // só com borda branca e um leve brilho.
+                if (lot.status === 'disponivel') { colorOptions.fillColor = '#000'; colorOptions.fillOpacity = 0; if (lot.id !== selectedLotId) { colorOptions.color = '#ffffff'; colorOptions.weight = 1.5; colorOptions.className = 'lote-disponivel'; } }
                 else if (lot.status === 'vendido') { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }
                 else if (lot.status === 'reserva') { colorOptions.fillColor = '#eab308'; colorOptions.color = '#eab308'; }
                 else { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }   // indisponível (vermelho, como vendido)
