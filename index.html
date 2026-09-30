@@ -66,6 +66,8 @@
 
         .sim-input { background: #323232; border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; outline: none; font-size: 13px; width: 100%; }
         .sim-input:focus { border-color: #FE5009; }
+        /* Lote disponível: borda branca com leve brilho (sem cor por cima da implantação) */
+        .lote-disponivel { filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.45)); }
     </style>
 </head>
 <body class="h-screen flex overflow-hidden relative">
@@ -201,7 +203,7 @@
         
         <!-- Legenda de cores (aparece quando um projeto está aberto) -->
         <div id="map-legend" class="hidden absolute top-4 right-4 z-[1500] bg-[#0d0d0d]/90 backdrop-blur border border-[#323232] rounded-lg p-3 text-xs text-white shadow-xl">
-            <div class="flex items-center gap-2 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#22c55e"></span> Disponível</div>
+            <div class="flex items-center gap-2 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm border border-[#d7d7d9]"></span> Disponível</div>
             <div class="flex items-center gap-2 mb-1.5"><span class="inline-block w-3 h-3 rounded-sm" style="background:#eab308"></span> Reserva</div>
             <div class="flex items-center gap-2"><span class="inline-block w-3 h-3 rounded-sm" style="background:#751900"></span> Vendido / Indisponível</div>
             <div id="legend-recentes" class="hidden items-center gap-2 mt-1.5 pt-1.5 border-t border-[#323232]"><span class="inline-block w-3 h-3 rounded-sm" style="background:#ec4899"></span> Vendido (últimos 30 dias)</div>
@@ -1141,8 +1143,7 @@
                         fillColor = 'rgba(117, 25, 0, 0.45)';
                         ctx.strokeStyle = '#751900';
                     } else if (lot.status === 'disponivel') {
-                        fillColor = 'rgba(34, 197, 94, 0.45)';
-                        ctx.strokeStyle = '#16a34a';
+                        ctx.strokeStyle = '#ffffff';
                     }
 
                     if (highlightRecent && lot.status === 'vendido' && lot.vendaRecente) {
@@ -1157,7 +1158,10 @@
 
                     ctx.fillStyle = fillColor;
                     ctx.fill();
+                    const brilho = lot.status === 'disponivel' && lot.id !== selectedLotId;
+                    if (brilho) { ctx.shadowColor = 'rgba(255, 255, 255, 0.45)'; ctx.shadowBlur = 6; }
                     ctx.stroke();
+                    if (brilho) { ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; }
                 });
 
                 const link = document.createElement('a');
@@ -1270,7 +1274,9 @@
                 let colorOptions = { weight: 1.5, color: '#d7d7d9', fillOpacity: 0.45 };
                 if (lot.id === selectedLotId) { colorOptions.color = '#FE5009'; colorOptions.weight = 3.5; }
 
-                if (lot.status === 'disponivel') { colorOptions.fillColor = '#22c55e'; colorOptions.fillOpacity = 0.5; if (lot.id !== selectedLotId) { colorOptions.color = '#16a34a'; colorOptions.weight = 2; } }
+                // Disponível: sem cor por cima, mostra a implantação como ela é (continua clicável),
+                // só com borda branca e um leve brilho.
+                if (lot.status === 'disponivel') { colorOptions.fillColor = '#000'; colorOptions.fillOpacity = 0; if (lot.id !== selectedLotId) { colorOptions.color = '#ffffff'; colorOptions.weight = 1.5; colorOptions.className = 'lote-disponivel'; } }
                 else if (lot.status === 'vendido') { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }
                 else if (lot.status === 'reserva') { colorOptions.fillColor = '#eab308'; colorOptions.color = '#eab308'; }
                 else { colorOptions.fillColor = '#751900'; colorOptions.color = '#751900'; }   // indisponível (vermelho, como vendido)
