@@ -3386,55 +3386,55 @@
    {
     "id": "cay2_156",
     "number": "156",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1349.0,549.7 1385.8,549.7 1385.9,477.8 1349.1,477.8"
    },
    {
     "id": "cay2_157",
     "number": "157",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1312.3,549.7 1349.0,549.7 1349.1,477.8 1312.3,477.8"
    },
    {
     "id": "cay2_158",
     "number": "158",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1275.5,549.7 1312.3,549.7 1312.3,477.8 1275.5,477.7"
    },
    {
     "id": "cay2_159",
     "number": "159",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1238.7,549.6 1275.5,549.7 1275.5,477.7 1238.7,477.7"
    },
    {
     "id": "cay2_160",
     "number": "160",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1201.9,549.6 1238.7,549.6 1238.7,477.7 1201.9,477.7"
    },
    {
     "id": "cay2_161",
     "number": "161",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1165.1,549.6 1201.9,549.6 1201.9,477.7 1165.2,477.7"
    },
    {
     "id": "cay2_162",
     "number": "162",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1128.3,549.6 1165.1,549.6 1165.2,477.7 1128.4,477.7"
    },
    {
     "id": "cay2_163",
     "number": "163",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1091.6,549.6 1128.3,549.6 1128.4,477.7 1091.6,477.6"
    },
    {
     "id": "cay2_164",
     "number": "164",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1054.8,549.6 1091.6,549.6 1091.6,477.6 1054.8,477.6"
    },
    {
@@ -3458,97 +3458,97 @@
    {
     "id": "cay2_168",
     "number": "168",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1533.0,445.9 1613.0,445.9 1613.0,406.0 1533.0,405.9"
    },
    {
     "id": "cay2_169",
     "number": "169",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1496.2,477.8 1533.0,477.9 1533.0,405.9 1496.3,405.9"
    },
    {
     "id": "cay2_170",
     "number": "170",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1459.4,477.8 1496.2,477.8 1496.3,405.9 1459.5,405.9"
    },
    {
     "id": "cay2_171",
     "number": "171",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1422.7,477.8 1459.4,477.8 1459.5,405.9 1422.7,405.9"
    },
    {
     "id": "cay2_172",
     "number": "172",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1385.9,477.8 1422.7,477.8 1422.7,405.9 1385.9,405.9"
    },
    {
     "id": "cay2_173",
     "number": "173",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1349.1,477.8 1385.9,477.8 1385.9,405.9 1349.1,405.9"
    },
    {
     "id": "cay2_174",
     "number": "174",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1312.3,477.8 1349.1,477.8 1349.1,405.9 1312.3,405.8"
    },
    {
     "id": "cay2_175",
     "number": "175",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1275.5,477.7 1312.3,477.8 1312.3,405.8 1275.6,405.8"
    },
    {
     "id": "cay2_176",
     "number": "176",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1238.7,477.7 1275.5,477.7 1275.6,405.8 1238.8,405.8"
    },
    {
     "id": "cay2_177",
     "number": "177",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1201.9,477.7 1238.7,477.7 1238.8,405.8 1202.0,405.8"
    },
    {
     "id": "cay2_178",
     "number": "178",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1165.2,477.7 1201.9,477.7 1202.0,405.8 1165.2,405.8"
    },
    {
     "id": "cay2_179",
     "number": "179",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1128.4,477.7 1165.2,477.7 1165.2,405.8 1128.4,405.7"
    },
    {
     "id": "cay2_180",
     "number": "180",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1091.6,477.6 1128.4,477.7 1128.4,405.7 1091.6,405.7"
    },
    {
     "id": "cay2_181",
     "number": "181",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1054.8,477.6 1091.6,477.6 1091.6,405.7 1054.8,405.7"
    },
    {
     "id": "cay2_182",
     "number": "182",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "973.2,479.2 1054.8,479.2 1054.8,477.6 1054.8,447.3 973.3,447.2"
    },
    {
     "id": "cay2_183",
     "number": "183",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "973.3,447.2 1054.8,447.3 1054.8,405.7 1000.8,405.7 994.5,411.1 987.8,415.9 980.7,420.2 973.3,423.9"
    },
    {
@@ -4238,85 +4238,85 @@
    {
     "id": "cay2_762",
     "number": "762",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1856.1,358.2 1902.5,358.2 1898.4,292.6 1856.1,292.6"
    },
    {
     "id": "cay2_763",
     "number": "763",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1817.0,358.1 1856.1,358.2 1856.1,292.6 1817.1,292.6"
    },
    {
     "id": "cay2_764",
     "number": "764",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1778.0,358.1 1817.0,358.1 1817.1,292.6 1778.1,292.6"
    },
    {
     "id": "cay2_765",
     "number": "765",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1739.0,358.1 1778.0,358.1 1778.1,292.6 1739.0,292.6"
    },
    {
     "id": "cay2_766",
     "number": "766",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1700.0,358.1 1739.0,358.1 1739.0,292.6 1700.0,292.5"
    },
    {
     "id": "cay2_767",
     "number": "767",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1660.9,358.1 1700.0,358.1 1700.0,292.5 1661.0,292.5"
    },
    {
     "id": "cay2_768",
     "number": "768",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1621.9,358.0 1660.9,358.1 1661.0,292.5 1622.0,292.5"
    },
    {
     "id": "cay2_769",
     "number": "769",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1582.9,358.0 1621.9,358.0 1622.0,292.5 1582.9,292.5"
    },
    {
     "id": "cay2_770",
     "number": "770",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1543.9,358.0 1582.9,358.0 1582.9,292.5 1543.9,292.5"
    },
    {
     "id": "cay2_771",
     "number": "771",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1504.9,358.0 1543.9,358.0 1543.9,292.5 1504.9,292.4"
    },
    {
     "id": "cay2_772",
     "number": "772",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1465.8,358.0 1504.9,358.0 1504.9,292.4 1465.9,292.4"
    },
    {
     "id": "cay2_773",
     "number": "773",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1426.8,357.9 1465.8,358.0 1465.9,292.4 1426.8,292.4"
    },
    {
     "id": "cay2_774",
     "number": "774",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1387.8,357.9 1426.8,357.9 1426.8,292.4 1387.8,292.4"
    },
    {
     "id": "cay2_775",
     "number": "775",
-    "status": "disponivel",
+    "status": "reserva",
     "points": "1348.8,357.9 1387.8,357.9 1387.8,292.4 1348.8,292.4"
    },
    {
@@ -11476,16 +11476,16 @@
   ],
   "CAY2 - Erico Verissimo Fase 2": [
    [
-    -28.652987023982526,
-    -53.57413653638249
+    -28.652931867,
+    -53.574131979
    ],
    [
-    -28.657010954305235,
-    -53.578832265061166
+    -28.6569558,
+    -53.578827708
    ],
    [
-    -28.651185967366168,
-    -53.57612016846243
+    -28.651141122,
+    -53.576124725
    ]
   ],
   "BAY - Morada": [
