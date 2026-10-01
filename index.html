@@ -496,7 +496,7 @@
                 let hasVisible = false;
                 if (this._lots) {
                     this._lots.forEach(lot => {
-                        if (this._filters[lot.status]) {
+                        if (loteVisivel(lot)) {
                             hasVisible = true;
                             const pts = lot.points.split(' ').map(p => {
                                 const c = p.split(',');
@@ -584,10 +584,18 @@
 
         let filters = { disponivel: true, vendido: true, reserva: true, indisponivel: true };
 
-        // Realce "vendidos nos últimos 30 dias": destaca em rosa (não esconde nada).
+        // "Vendidos nos últimos 30 dias" (rosa): filtro próprio, independente de "Vendidos".
+        // Ligado, mostra esses lotes mesmo com os vendidos ocultos.
         // Calculado no cliente (hoje - 30 dias) a partir da data da venda que vem do banco.
         let highlightRecent = false;
         const RECENTES_DIAS = 30;
+
+        function vendaRecenteVisivel(lot) {
+            return highlightRecent && lot.status === 'vendido' && lot.vendaRecente;
+        }
+        function loteVisivel(lot) {
+            return !!filters[lot.status] || vendaRecenteVisivel(lot);
+        }
 
         let currentProject = null;
         let selectedLotId = null;
@@ -1099,7 +1107,7 @@
                 ctx.beginPath();
                 let hasVisible = false;
                 currentList.forEach(lot => {
-                    if (filters[lot.status]) {
+                    if (loteVisivel(lot)) {
                         hasVisible = true;
                         const pts = lot.points.split(' ').map(p => {
                             const coords = p.split(',');
@@ -1119,7 +1127,7 @@
                 ctx.restore();
 
                 currentList.forEach(lot => {
-                    if (!filters[lot.status]) return;
+                    if (!loteVisivel(lot)) return;
                     const points = lot.points.split(' ').map(p => {
                         const coords = p.split(',');
                         return { x: parseFloat(coords[0]), y: parseFloat(coords[1]) };
@@ -1269,7 +1277,7 @@
                 else indisp++;   // indisponível (permuta/terceiros/transferido/proposta)
                 if (lot.status === 'vendido' && lot.vendaRecente) recem++;
 
-                if (!filters[lot.status]) return;
+                if (!loteVisivel(lot)) return;
 
                 const geoCoords = pixelToLatLng(lot.points, bounds);
 
@@ -1597,9 +1605,8 @@
             if (chip) chip.classList.toggle('chip-off', !highlightRecent);
             const lg = document.getElementById('legend-recentes');
             if (lg) { lg.classList.toggle('hidden', !highlightRecent); lg.classList.toggle('flex', highlightRecent); }
-            // Se o realce está ligado, garante que os vendidos apareçam para poder destacar.
-            if (highlightRecent && !filters.vendido) toggleFilter('vendido');
-            else renderGeographicPolygons();
+            desselecionarSeOculto();
+            renderGeographicPolygons();
         }
 
         function toggleFilter(status) {
@@ -1608,18 +1615,20 @@
             const chip = document.getElementById(`chip-${status}`);
             if (chip) chip.classList.toggle('chip-off', !filters[status]);
 
-            if (selectedLotId) {
-                const list = loteamentosDados[currentProject] || [];
-                const lot = list.find(l => l.id === selectedLotId);
-                if (lot && lot.status === status && !filters[status]) {
-                    selectedLotId = null;
-                    document.getElementById('lot-actions').className = "hidden";
-                    closeSimulation();
-                    if (map) map.closePopup();
-                }
-            }
-
+            desselecionarSeOculto();
             renderGeographicPolygons();
+        }
+
+        function desselecionarSeOculto() {
+            if (!selectedLotId) return;
+            const list = loteamentosDados[currentProject] || [];
+            const lot = list.find(l => l.id === selectedLotId);
+            if (lot && !loteVisivel(lot)) {
+                selectedLotId = null;
+                document.getElementById('lot-actions').className = "hidden";
+                closeSimulation();
+                if (map) map.closePopup();
+            }
         }
 
         function searchLot() {
@@ -1629,7 +1638,7 @@
             const found = list.find(l => l.number === query);
             
             if (found) {
-                if (!filters[found.status]) toggleFilter(found.status);
+                if (!loteVisivel(found)) toggleFilter(found.status);
                 const bounds = calibrationBounds[currentProject];
                 const geoCoords = pixelToLatLng(found.points, bounds);
                 selectLot(found);
