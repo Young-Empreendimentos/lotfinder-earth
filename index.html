@@ -230,6 +230,7 @@
                 <div id="sim-preco-box" class="bg-[#0d0d0d]/80 rounded-lg p-3 text-center border border-[#323232]">
                     <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Preço à Vista</p>
                     <p id="sim-preco" class="text-xl md:text-2xl font-bold text-green-400">--</p>
+                    <p class="text-[9px] text-gray-500 mt-1">já com ITBI + registro</p>
                 </div>
                 <a id="sim-simular-btn" href="#" target="_blank" rel="noopener noreferrer" class="hidden items-center justify-center gap-2 w-full bg-[#FE5009] hover:brightness-110 transition text-white font-bold text-sm py-2.5 rounded-lg">
                     Simular financiamento →
@@ -325,7 +326,7 @@
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="num_lote" checked> Nº lote</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="area" checked> Área</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="matricula" checked> Matrícula</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_av" checked> Preço à vista</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="total_avista" checked> Preço à vista</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_promocional" checked> Preço promocional</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_convencional" checked> Preço convencional</label>
               </div>
@@ -651,6 +652,18 @@
 
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        // Custos em cima do preço do lote — iguais ao simular-financiamento / tabela-vendas:
+        // ITBI 2% (3% no Montecarlo) + R$2.500 de cartório/registro.
+        const CARTORIO_REGISTRO = 2500;
+        function itbiPctDe(code) {
+            return /montecarlo/i.test(getProjectName(code) || code || '') ? 0.03 : 0.02;
+        }
+        // "Preço à vista" que o cliente paga = preço do lote + ITBI + registro (bate com a simulação).
+        function totalAvista(preco, code) {
+            if (preco == null) return null;
+            return preco + preco * itbiPctDe(code) + CARTORIO_REGISTRO;
         }
 
         // Data da venda "AAAA-MM-DD" -> "DD/MM/AAAA"
@@ -1558,7 +1571,7 @@
             const precoBox = document.getElementById('sim-preco-box');
             if (mostraPreco) {
                 precoBox.classList.remove('hidden');
-                document.getElementById('sim-preco').innerText = (lot.preco != null) ? formatCurrency(lot.preco) : 'Sob consulta';
+                document.getElementById('sim-preco').innerText = (lot.preco != null) ? formatCurrency(totalAvista(lot.preco, currentProject)) : 'Sob consulta';
             } else {
                 precoBox.classList.add('hidden');
             }
@@ -1688,7 +1701,7 @@
             { key:'num_lote', label:'Nº lote', align:'left' },
             { key:'area', label:'Área (m²)', align:'right' },
             { key:'matricula', label:'Matrícula', align:'left' },
-            { key:'preco_av', label:'Preço à vista', money:true, align:'right' },
+            { key:'total_avista', label:'Preço à vista', money:true, align:'right' },
             { key:'preco_promocional', label:'Preço promocional', money:true, align:'right' },
             { key:'preco_convencional', label:'Preço convencional', money:true, align:'right' },
         ];
@@ -1770,7 +1783,7 @@
                 return `<tr style="background:${i%2?'#f8fafc':'#ffffff'}">${tds}</tr>`;
             }).join('');
             document.getElementById('tv-tabela').innerHTML = th + '<tbody>' + rows + '</tbody>';
-            document.getElementById('tv-rodape').innerText = 'Preço convencional = entrada de 10% + ITBI e registro + saldo em 60x (juros do empreendimento). ITBI ' + data.itbi_percentual + '%. Valores sujeitos a alteração.';
+            document.getElementById('tv-rodape').innerText = 'Preço à vista = valor do lote + ITBI (' + data.itbi_percentual + '%) + registro (R$ 2.500). Preço convencional = entrada de 10% + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.';
             document.getElementById('tv-preview').classList.remove('hidden');
             document.getElementById('tv-pdf').classList.remove('hidden');
             document.getElementById('tv-xlsx').classList.remove('hidden');
@@ -1817,7 +1830,7 @@
             });
             const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 82;
             doc.setFontSize(7); doc.setTextColor(120);
-            doc.text('Preço convencional = 10% entrada + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.', 40, finalY + 16);
+            doc.text('Preço à vista = valor do lote + ITBI + registro (R$ 2.500). Preço convencional = 10% entrada + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.', 40, finalY + 16);
             doc.save(tvNomeArquivo('pdf'));
         }
 
