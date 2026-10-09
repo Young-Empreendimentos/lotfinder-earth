@@ -410,7 +410,7 @@
         const RESERVAS_PROJETO = 'CAY2 - Erico Verissimo Fase 2';
         const RESERVAS_STATUS_URL = 'https://vvtympzatclvjaqucebr.supabase.co/rest/v1/rpc/lotfinder_status';
         const RESERVAS_CHAVE = 'sb_publishable_VRzI66cuw15hnqnoPKe27A_UmUbuhPC';
-        const RESERVAS_PARA_MAPA = { disponivel: 'disponivel', reservado: 'reserva', bloqueado: 'indisponivel' };
+        const RESERVAS_PARA_MAPA = { disponivel: 'disponivel', reservado: 'reserva', bloqueado: 'reserva' };
 
         async function fetchReservasStatus() {
             const res = await fetch(RESERVAS_STATUS_URL, {
@@ -431,12 +431,13 @@
             const lots = loteamentosDados[RESERVAS_PROJETO];
             if (!lots || !Array.isArray(lista)) return;
             const porNumero = {};
-            for (const l of lista) porNumero[normLote(l.numero)] = RESERVAS_PARA_MAPA[l.status];
+            for (const l of lista) porNumero[normLote(l.numero)] = l.status;
             for (const lot of lots) {
-                const s = porNumero[normLote(lot.number)];
-                if (!s) continue;
-                lot.status = s;
-                lot.statusTexto = s === 'reserva' ? 'Reservado' : null;
+                const original = porNumero[normLote(lot.number)];
+                if (!RESERVAS_PARA_MAPA[original]) continue;
+                lot.status = RESERVAS_PARA_MAPA[original];
+                // Reservado por cliente aparece como "Reservado"; bloqueado segue como reserva técnica.
+                lot.statusTexto = original === 'reservado' ? 'Reservado' : null;
             }
         }
 
