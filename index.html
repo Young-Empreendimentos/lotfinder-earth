@@ -405,6 +405,41 @@
             return await res.json();
         }
 
+        // CAY2 (Erico Verissimo Fase 2): status vem do sistema "Reservas" (schema marketing).
+        // A função só devolve número e status do lote; a chave publicável é feita para ficar no navegador.
+        const RESERVAS_PROJETO = 'CAY2 - Erico Verissimo Fase 2';
+        const RESERVAS_STATUS_URL = 'https://vvtympzatclvjaqucebr.supabase.co/rest/v1/rpc/lotfinder_status';
+        const RESERVAS_CHAVE = 'sb_publishable_VRzI66cuw15hnqnoPKe27A_UmUbuhPC';
+        const RESERVAS_PARA_MAPA = { disponivel: 'disponivel', reservado: 'reserva', bloqueado: 'indisponivel' };
+
+        async function fetchReservasStatus() {
+            const res = await fetch(RESERVAS_STATUS_URL, {
+                method: 'POST',
+                headers: {
+                    apikey: RESERVAS_CHAVE,
+                    Authorization: 'Bearer ' + RESERVAS_CHAVE,
+                    'Content-Type': 'application/json',
+                    'Content-Profile': 'marketing'
+                },
+                body: '{}'
+            });
+            if (!res.ok) throw new Error('lotfinder_status: HTTP ' + res.status);
+            return await res.json();
+        }
+
+        function mergeReservasStatus(lista) {
+            const lots = loteamentosDados[RESERVAS_PROJETO];
+            if (!lots || !Array.isArray(lista)) return;
+            const porNumero = {};
+            for (const l of lista) porNumero[normLote(l.numero)] = RESERVAS_PARA_MAPA[l.status];
+            for (const lot of lots) {
+                const s = porNumero[normLote(lot.number)];
+                if (!s) continue;
+                lot.status = s;
+                lot.statusTexto = s === 'reserva' ? 'Reservado' : null;
+            }
+        }
+
         // Sobrescreve o status (e injeta o preço à vista) de cada lote com o dado ao vivo.
         // Mantém o status congelado do dados.json como fallback quando não há correspondência.
         function mergeLiveMapa(liveMapa) {
@@ -740,13 +775,12 @@
                         }
                     }
 
-                    // Status + preço à vista ao vivo do Supabase (Sienge / comercial)
-                    try {
-                        const liveMapa = await fetchLiveMapa();
-                        mergeLiveMapa(liveMapa);
-                    } catch (e) {
-                        console.error('Falha ao buscar dados ao vivo:', e);
-                    }
+                    // Status + preço à vista ao vivo do Supabase (Sienge / comercial) e da CAY2 (Reservas)
+                    const [liveMapa, reservasStatus] = await Promise.allSettled([fetchLiveMapa(), fetchReservasStatus()]);
+                    if (liveMapa.status === 'fulfilled') mergeLiveMapa(liveMapa.value);
+                    else console.error('Falha ao buscar dados ao vivo:', liveMapa.reason);
+                    if (reservasStatus.status === 'fulfilled') mergeReservasStatus(reservasStatus.value);
+                    else console.error('Falha ao buscar status da CAY2 (Reservas):', reservasStatus.reason);
 
                     buildDropdown();
                     renderMarkers();
@@ -1315,7 +1349,8 @@
 
                 const polygon = L.polygon(geoCoords, colorOptions).addTo(polygonsGroup);
 
-                let statusName = lot.status === 'indisponivel' ? 'INDISPONÍVEL' : lot.status.toUpperCase();
+                let statusName = lot.statusTexto ? lot.statusTexto.toUpperCase()
+                    : lot.status === 'indisponivel' ? 'INDISPONÍVEL' : lot.status.toUpperCase();
                 const vendaLinha = (lot.status === 'vendido' && lot.venda)
                     ? `<p class="text-[10px] ${destacado ? 'text-[#ec4899] font-bold' : 'text-gray-400'} mt-0.5">Vendido em ${fmtData(lot.venda)}</p>`
                     : '';
@@ -1551,7 +1586,7 @@
 
             document.getElementById('lot-notes').value = lot.notes || '';
             document.getElementById('notes-container').classList.toggle('hidden', !ADMIN);
-            const statusText = statusLabel(lot.status);
+            const statusText = lot.statusTexto || statusLabel(lot.status);
             const pill = document.getElementById('selected-lot-status');
             pill.className = "inline-block text-[11px] font-medium px-2.5 py-0.5 rounded-full";
             pill.innerText = statusText;
