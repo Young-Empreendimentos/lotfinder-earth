@@ -694,7 +694,9 @@
         // ITBI 2% (3% no Montecarlo) + R$2.500 de cartório/registro.
         const CARTORIO_REGISTRO = 2500;
         function itbiPctDe(code) {
-            return /montecarlo/i.test(getProjectName(code) || code || '') ? 0.03 : 0.02;
+            // 3% no Montecarlo. Amarrado ao CÓDIGO (prefixo MTC) e ao nome, pra não quebrar se renomearem.
+            const cod = String(code || '').trim().toUpperCase();
+            return (cod.startsWith('MTC') || /montecarlo/i.test(getProjectName(code) || '')) ? 0.03 : 0.02;
         }
         // "Preço à vista" que o cliente paga = preço do lote + ITBI + registro (bate com a simulação).
         function totalAvista(preco, code) {
@@ -1583,7 +1585,7 @@
             document.getElementById('lot-actions').className = "bg-[#0d0d0d]/80 p-4 rounded-xl space-y-3 shadow-lg shadow-orange-900/20 transition-all";
             document.getElementById('sidebar-status-container').className = "mt-1.5";
             
-            document.getElementById('sidebar-action-title').innerHTML = `Lote <span class="text-white">${lot.number}</span>`;
+            document.getElementById('sidebar-action-title').innerHTML = `Lote <span class="text-white">${esc(lot.number)}</span>`;
 
             document.getElementById('lot-notes').value = lot.notes || '';
             document.getElementById('notes-container').classList.toggle('hidden', !ADMIN);
@@ -1684,6 +1686,7 @@
             const query = document.getElementById('search-input').value.trim();
             if (query === "") return;
             const list = loteamentosDados[currentProject];
+            if (!currentProject || !list) return; // nenhum empreendimento aberto ainda
             const found = list.find(l => l.number === query);
             
             if (found) {
@@ -1743,6 +1746,8 @@
         ];
         let tvUltima = null;
         const tvBRL = (v) => (v==null||v==='') ? '—' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
+        // Escapa HTML antes de injetar dado do banco via innerHTML (evita XSS/quebra de layout).
+        const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         const tvFiltroLabel = (f) => f==='disponivel'?'Disponíveis':f==='reserva'?'Reserva técnica':f==='vendido'?'Vendidos':'Todos';
 
         async function tvSessao() {
@@ -1770,6 +1775,8 @@
 
         function fecharTabela() { document.getElementById('tv-modal').classList.add('hidden'); }
         async function sairTabela() {
+            // SSO: escopo LOCAL — sai só deste navegador. signOut() sem escopo é GLOBAL e derruba
+            // a pessoa de TODOS os sistemas Young (regra da skill banco-supabase). Nunca sem escopo.
             const c = tvSb(); if (c) { try { await c.auth.signOut({ scope: 'local' }); } catch (e) {} }
             location.reload();
         }
@@ -1813,7 +1820,7 @@
             const rows = data.linhas.map((l,i)=>{
                 const tds = cols.map(c=>{
                     let v = l[c.key];
-                    v = c.money ? tvBRL(v) : (v==null||v===''?'—':v);
+                    v = c.money ? tvBRL(v) : (v==null||v===''?'—':esc(v));
                     return `<td style="text-align:${c.align};padding:5px 8px;border-bottom:1px solid #e5e7eb">${v}</td>`;
                 }).join('');
                 return `<tr style="background:${i%2?'#f8fafc':'#ffffff'}">${tds}</tr>`;
@@ -1889,11 +1896,35 @@
         async function entrarGoogle() {
             const c = tvSb();
             if (!c) { mostrarLogin('Não foi possível iniciar o login. Recarregue a página.'); return; }
-            await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+            try {
+                await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+            } catch (e) {
+                mostrarLogin('Falha ao iniciar o login com o Google. Tente de novo.');
+            }
+        }
+        // Acesso Young: domínio @youngempreendimentos.com.br OU estar na allowlist dos sistemas de
+        // vendas (comercial.simulador_usuarios, ativo). Assim não trava quem já é autorizado em outro
+        // domínio, mas barra conta Google aleatória. A leitura usa a própria linha (RLS self_read).
+        const YOUNG_DOMAIN = 'youngempreendimentos.com.br';
+        async function emailAutorizado(c, email) {
+            if (!email) return false;
+            if (email.split('@')[1] === YOUNG_DOMAIN) return true;
+            try {
+                const { data } = await c.schema('comercial').from('simulador_usuarios')
+                    .select('ativo').eq('email', email).maybeSingle();
+                return !!(data && data.ativo);
+            } catch (e) { return false; }
         }
         async function bootstrapLotfinder() {
+            const c = tvSb();
             const sess = await tvSessao();
             if (!sess) { mostrarLogin(); return; }
+            const email = (sess.user?.email || '').toLowerCase();
+            if (!(await emailAutorizado(c, email))) {
+                try { await c.auth.signOut({ scope: 'local' }); } catch (e) {}
+                mostrarLogin('Acesso restrito à equipe Young. Entre com sua conta @' + YOUNG_DOMAIN + '.');
+                return;
+            }
             esconderLogin();
             initMapa();
         }
