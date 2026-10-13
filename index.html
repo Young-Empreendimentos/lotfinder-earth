@@ -1770,7 +1770,7 @@
 
         function fecharTabela() { document.getElementById('tv-modal').classList.add('hidden'); }
         async function sairTabela() {
-            const c = tvSb(); if (c) { try { await c.auth.signOut(); } catch (e) {} }
+            const c = tvSb(); if (c) { try { await c.auth.signOut({ scope: 'local' }); } catch (e) {} }
             location.reload();
         }
 
