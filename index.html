@@ -1603,13 +1603,14 @@
             stEl.innerText = statusText + ((lot.status === 'vendido' && lot.venda) ? ' · ' + fmtData(lot.venda) : '');
             stEl.style.color = statusColor(lot.status);
 
-            // Preço só aparece para lotes disponíveis ou em reserva.
-            // Vendido e indisponível não exibem valor.
-            const mostraPreco = (lot.status === 'disponivel' || lot.status === 'reserva');
+            // Preço: mostra SEMPRE que houver valor na tabela — inclusive vendido/indisponível/reserva
+            // (decisão Elen 14/10/2026). Em disponível/reserva sem preço, mantém "Sob consulta".
+            const podeSimular = (lot.status === 'disponivel' || lot.status === 'reserva');
+            const temPreco = (lot.preco != null);
             const precoBox = document.getElementById('sim-preco-box');
-            if (mostraPreco) {
+            if (temPreco || podeSimular) {
                 precoBox.classList.remove('hidden');
-                document.getElementById('sim-preco').innerText = (lot.preco != null) ? formatCurrency(totalAvista(lot.preco, currentProject)) : 'Sob consulta';
+                document.getElementById('sim-preco').innerText = temPreco ? formatCurrency(totalAvista(lot.preco, currentProject)) : 'Sob consulta';
             } else {
                 precoBox.classList.add('hidden');
             }
@@ -1618,7 +1619,7 @@
             // e só em empreendimentos que existem no Simulador de Vendas.
             const simBtn = document.getElementById('sim-simular-btn');
             const simEmp = SIM_EMP[String(currentProject || '').split(' - ')[0].trim()];
-            if (mostraPreco && simEmp) {
+            if (podeSimular && simEmp) {
                 simBtn.href = SIM_URL + '?empreendimento=' + encodeURIComponent(simEmp) + '&lote=' + encodeURIComponent(lot.number);
                 simBtn.classList.remove('hidden');
                 simBtn.classList.add('flex');
