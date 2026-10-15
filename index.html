@@ -326,7 +326,9 @@
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="num_lote" checked> Nº lote</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="area" checked> Área</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="matricula" checked> Matrícula</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="total_avista" checked> Preço à vista</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_av" checked> Preço do lote</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="itbi_registro" checked> ITBI + Registro</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="total_avista" checked> Total à vista</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_promocional" checked> Preço promocional</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_convencional" checked> Preço convencional</label>
               </div>
@@ -1741,7 +1743,9 @@
             { key:'num_lote', label:'Nº lote', align:'left' },
             { key:'area', label:'Área (m²)', align:'right' },
             { key:'matricula', label:'Matrícula', align:'left' },
-            { key:'total_avista', label:'Preço à vista', money:true, align:'right' },
+            { key:'preco_av', label:'Preço do lote', money:true, align:'right' },
+            { key:'itbi_registro', label:'ITBI + Registro', money:true, align:'right' },
+            { key:'total_avista', label:'Total à vista', money:true, align:'right' },
             { key:'preco_promocional', label:'Preço promocional', money:true, align:'right' },
             { key:'preco_convencional', label:'Preço convencional', money:true, align:'right' },
         ];
