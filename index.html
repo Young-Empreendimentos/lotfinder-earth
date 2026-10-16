@@ -326,11 +326,10 @@
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="num_lote" checked> Nº lote</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="area" checked> Área</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="matricula" checked> Matrícula</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_av" checked> Preço do lote</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="itbi_registro" checked> ITBI + Registro</label>
-                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="total_avista" checked> Total à vista</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_av" checked> Preço à vista</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_promocional" checked> Preço promocional</label>
                 <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="preco_convencional" checked> Preço convencional</label>
+                <label class="flex items-center gap-1.5"><input type="checkbox" class="tv-col" value="itbi_registro" checked> ITBI + Registro</label>
               </div>
             </div>
           </div>
@@ -1744,11 +1743,12 @@
             { key:'num_lote', label:'Nº lote', align:'left' },
             { key:'area', label:'Área (m²)', align:'right' },
             { key:'matricula', label:'Matrícula', align:'left' },
-            { key:'preco_av', label:'Preço do lote', money:true, align:'right' },
-            { key:'itbi_registro', label:'ITBI + Registro', money:true, align:'right' },
-            { key:'total_avista', label:'Total à vista', money:true, align:'right' },
+            // Preços LIMPOS (sem ITBI):
+            { key:'preco_av', label:'Preço à vista', money:true, align:'right' },
             { key:'preco_promocional', label:'Preço promocional', money:true, align:'right' },
             { key:'preco_convencional', label:'Preço convencional', money:true, align:'right' },
+            // Coluna à parte (não somada aos preços): ITBI+Registro do financiamento (o maior).
+            { key:'itbi_registro', label:'ITBI + Registro', money:true, align:'right' },
         ];
         let tvUltima = null;
         const tvBRL = (v) => (v==null||v==='') ? '—' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v));
@@ -1832,7 +1832,7 @@
                 return `<tr style="background:${i%2?'#f8fafc':'#ffffff'}">${tds}</tr>`;
             }).join('');
             document.getElementById('tv-tabela').innerHTML = th + '<tbody>' + rows + '</tbody>';
-            document.getElementById('tv-rodape').innerText = 'Preço à vista = valor do lote + ITBI (' + data.itbi_percentual + '%) + registro (R$ 2.500). Preço convencional = entrada de 10% + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.';
+            document.getElementById('tv-rodape').innerText = 'Preços SEM ITBI. Preço à vista = valor do lote. Preço convencional = entrada de 10% + saldo em 60x (juros do empreendimento), só do lote. ITBI + Registro é cobrado à PARTE (coluna própria): ITBI de ' + data.itbi_percentual + '% sobre o total do financiamento + registro (R$ 2.500) — é o maior ITBI, não está somado aos preços. Valores sujeitos a alteração.';
             document.getElementById('tv-preview').classList.remove('hidden');
             document.getElementById('tv-pdf').classList.remove('hidden');
             document.getElementById('tv-xlsx').classList.remove('hidden');
@@ -1879,7 +1879,8 @@
             });
             const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 82;
             doc.setFontSize(7); doc.setTextColor(120);
-            doc.text('Preço à vista = valor do lote + ITBI + registro (R$ 2.500). Preço convencional = 10% entrada + ITBI/registro + saldo em 60x (juros do empreendimento). Valores sujeitos a alteração.', 40, finalY + 16);
+            var _tvRod = 'Preços SEM ITBI. À vista = valor do lote. Convencional = 10% entrada + saldo em 60x (juros do empreendimento), só do lote. ITBI + Registro é cobrado à PARTE (coluna própria, o maior, do financiamento): ITBI sobre o total do contrato + registro R$ 2.500. Valores sujeitos a alteração.';
+            doc.text(doc.splitTextToSize(_tvRod, doc.internal.pageSize.getWidth() - 80), 40, finalY + 16);
             doc.save(tvNomeArquivo('pdf'));
         }
 
